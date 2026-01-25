@@ -1,6 +1,22 @@
 import Dashboard from './components/Dashboard';
 import RealMap from './components/RealMap';
+import Logistics from './components/Logistics.jsx';
+import Inventory from './components/Inventory';
+import Fleet from './components/Fleet.jsx';
+import WarehouseManagement from './components/warehouse.jsx';
+import Signup from './components/Signup.jsx';
+import Login from './components/Login.jsx';
+import NexusSplash from './components/NexusSplash.jsx';
+import { jwtDecode } from 'jwt-decode';
+
 import { useState, useEffect } from 'react';
+import {
+  Package,
+  AlertTriangle,
+  Truck,
+  Activity,
+  Plus
+} from "lucide-react";
 
 // const WAREHOUSE_POINTS = [
 //   { lat: 32.7767, lng: -96.7970, name: "Dallas DC", status: "Active" },
@@ -11,51 +27,131 @@ import { useState, useEffect } from 'react';
 
 
 function App() {
-  const [WAREHOUSE_POINTS, setWAREHOUSE_POINTS]= useState([]);
-  useEffect(()=>{
-    console.log("Fetching Coordinates...");
+  // 1. State for View Switching
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    const token = localStorage.getItem('nexus_token');
+    
+    if (!token) return false;
+
+    try {
+      const decoded = jwtDecode(token);
+      const currentTime = Date.now() / 1000; // Convert to seconds
+
+      if (decoded.exp < currentTime) {
+        console.warn("Token expired. Clearing storage.");
+        localStorage.removeItem('nexus_token');
+        return false;
+      }
+      return true;
+    } catch (error) {
+      return false;
+    }
+  });
+  const [WAREHOUSE_POINTS, setWAREHOUSE_POINTS] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const handleLogin = (token) => {
+    localStorage.setItem('nexus_token', token);
+    // localStorage.setItem('nexus_user', JSON.stringify(userData));
+    setIsLoggedIn(true);
+    setActiveTab('dashboard');
+  };
+
+  const handleLogout = () => {
+    // localStorage.removeItem('nexus_token');
+    localStorage.removeItem('nexus_token');
+    setIsLoggedIn(false);
+    setActiveTab('login');
+  };
+
+  useEffect(() => {
     fetch("http://localhost:3000/api/logistics/coordinates")
-    .then((res)=>res.json())
-    .then((json)=>{
-      console.log("Coordinates Array:", json.data);
-      setWAREHOUSE_POINTS(json.data);
-    })
-  },[])
+      .then((res) => res.json())
+      .then((json) => {
+        setWAREHOUSE_POINTS(json.data);
+      })
+      .catch(err => console.error("API Error:", err));
+  }, []);
+
+  useEffect(() => {
+    // Check if token exists on initial load
+    const token = localStorage.getItem('nexus_token');
+    if (token) {
+      setIsLoggedIn(true);
+    }
+    
+    // Simulate a brief delay for a smoother "Nexus" splash experience
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 800); 
+  }, []);
+
+  if (isLoading) {
+    return <NexusSplash />;
+  }
+
+  if (!isLoggedIn) {
+    if (activeTab === 'signup') {
+      return <Signup onLoginClick={() => setActiveTab('login')} />;
+    }
+    return <Login onLogin={handleLogin} onSignupClick={() => setActiveTab('signup')} />;
+  }
+
   return (
-    <Dashboard>
-      {/* 4 Top Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <StatCard icon="📦" label="Total Active Orders" value="1,847" trend="+12.3%" color="emerald" />
-        <StatCard icon="⚠️" label="Critical Inventory Alerts" value="23" trend="+5 new" color="rose" />
-        <StatCard icon="🚛" label="Fleet Availability" value="78%" sub="142 Idle / 40 In-Transit" color="emerald" />
-        <StatCard icon="📈" label="Operational Uptime" value="99.4%" trend="+0.2%" color="emerald" />
-      </div>
+    // Pass setActiveTab and activeTab to Dashboard so the sidebar can control them
+    <Dashboard setActiveTab={setActiveTab} activeTab={activeTab}>
+      
+      {/* 2. Conditional Rendering Logic */}
+      {activeTab === 'dashboard' && (
+        <>
+          {/* Top Stats Cards */}
+          <header className="my-5 flex justify-between items-end">
+            <div>
+              <h1 className="text-2xl font-black text-white tracking-tight">Nexus</h1>
+              <p className="text-sm text-zinc-500 mt-1">Logistics Command Center</p>
+            </div>
+            <button className="bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+              <Plus size={16} /> Place New Order
+            </button>
+          </header>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <StatCard icon={<Package />} label="Total Active Orders" value="1,847" trend="+12.3%" color="emerald" />
+            <StatCard icon={<AlertTriangle />} label="Critical Inventory Alerts" value="23" trend="+5 new" color="rose" />
+            <StatCard icon={<Truck />} label="Fleet Availability" value="78%" sub="142 Idle / 40 In-Transit" color="emerald" />
+            <StatCard icon={<Activity />} label="Operational Uptime" value="99.4%" trend="+0.2%" color="emerald" />
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Warehouse Network Map Area */}
-        <div className="lg:col-span-2 bg-[#0F1219] border border-zinc-800 rounded-xl overflow-hidden relative">
-          <div className="absolute top-4 left-4 z-[1000] bg-[#0F1219]/80 p-2 rounded border border-zinc-700">
-            <h3 className="text-white font-bold text-xs uppercase tracking-widest">Live Network</h3>
-          </div>
-          <RealMap points={WAREHOUSE_POINTS} />
-        </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-[#0F1219] border border-zinc-800 rounded-xl overflow-hidden relative min-h-[400px]">
+              <div className="absolute top-4 left-4 z-[1000] bg-[#0F1219]/80 p-2 rounded border border-zinc-700">
+                <h3 className="text-white font-bold text-xs uppercase tracking-widest text-[10px]">Live Network</h3>
+              </div>
+              <RealMap points={WAREHOUSE_POINTS} />
+            </div>
 
-        {/* Inventory Health Column */}
-        <div className="bg-[#0F1219] border border-zinc-800 rounded-xl flex flex-col">
-          <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
-            <h3 className="text-white font-bold text-sm">Inventory Health</h3>
-            <span className="text-[10px] bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded border border-rose-500/20">7 Alerts</span>
+            <div className="bg-[#0F1219] border border-zinc-800 rounded-xl flex flex-col">
+              <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
+                <h3 className="text-white font-bold text-sm">Inventory Health</h3>
+                <span className="text-[10px] bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded border border-rose-500/20">7 Alerts</span>
+              </div>
+              <div className="p-4 space-y-3 flex-1">
+                <InventoryItem name="Steel Fasteners M12" loc="Dallas DC" stock={45} target={200} alert={false} />
+                <InventoryItem name="Hydraulic Fluid 5L" loc="Miami Port" stock={12} target={150} alert={true} />
+                <InventoryItem name="Circuit Boards Type-A" loc="New York Hub" stock={78} target={300} alert={false} />
+              </div>
+              <button className="m-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-lg transition-colors">
+                View All Alerts
+              </button>
+            </div>
           </div>
-          <div className="p-4 space-y-3 flex-1">
-            <InventoryItem name="Steel Fasteners M12" loc="Dallas DC" stock={45} target={200} alert={false} />
-            <InventoryItem name="Hydraulic Fluid 5L" loc="Miami Port" stock={12} target={150} alert={true} />
-            <InventoryItem name="Circuit Boards Type-A" loc="New York Hub" stock={78} target={300} alert={false} />
-          </div>
-          <button className="m-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-lg transition-colors">
-            View All Alerts
-          </button>
-        </div>
-      </div>
+        </>
+      )
+      }
+      {activeTab === 'logistics' && <Logistics />}
+      {activeTab === 'inventory' && <Inventory />}
+      {activeTab === 'fleet' && <Fleet />}
+      {activeTab === 'warehouse' && <WarehouseManagement />}
     </Dashboard>
   );
 }

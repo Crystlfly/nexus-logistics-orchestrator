@@ -2,24 +2,26 @@ import express from 'express';
 import dotenv from 'dotenv';
 import sql from 'mssql';
 import cors from 'cors';
+import dbconfigSetup from './dbconfigSetup.js';
+import login from './login.js';
+import signup from './signup.js';
+import fleet from './components/fleet.js';
+import inventory from './components/inventory.js';
 
 dotenv.config();
 
 const app = express();
+app.use(express.json());
 app.use(cors());
 
 const port = 3000; 
 
-const config = {
-    user: process.env.DB_USER, 
-    password: process.env.DB_PASSWORD,
-    server: process.env.DB_SERVER, 
-    database: process.env.DB_NAME,
-    options: {
-        encrypt: true,
-        trustServerCertificate: false 
-    }
-};
+const config = dbconfigSetup;
+
+app.use(login);
+app.use(signup);
+app.use(fleet);
+app.use(inventory);
 
 app.get('/api/logistics/dispatch-queue', async (req, res) => {
     try {
