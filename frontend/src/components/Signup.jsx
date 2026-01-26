@@ -1,6 +1,8 @@
 import React from 'react';
 import { useState } from 'react';
 import { Package, Zap, Lock, Users, ArrowRight, Eye } from 'lucide-react';
+import { useGoogleLogin } from '@react-oauth/google';
+
 
 const SignupSplit = ({ onLoginClick }) => {
     const [formData, setFormData]=useState({
@@ -41,6 +43,29 @@ const SignupSplit = ({ onLoginClick }) => {
             console.error("Signup Error:",err);
         }
     }
+
+    const googleLogin = useGoogleLogin({
+      onSuccess: async (tokenResponse) => {
+        try {
+          // Send the access token to your backend
+          const res = await fetch("http://localhost:3000/api/google", {
+            method: "POST",
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: tokenResponse.access_token })
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            // Save token and login user
+            localStorage.setItem('nexus_token', data.token);
+            window.location.reload(); // Quick way to refresh auth state
+          }
+        } catch (err) {
+          console.error("Google Signup Error:", err);
+        }
+      },
+      onError: () => console.log('Login Failed'),
+    });
 
   return (
     <div className="min-h-screen bg-[#0B0E14] flex font-sans relative overflow-hidden py-14 px-6 lg:px-20">
@@ -89,6 +114,7 @@ const SignupSplit = ({ onLoginClick }) => {
           <p className="text-zinc-500 text-sm mb-10 tracking-tight">Get started with your command center</p>
           
           <button 
+            onClick={()=>googleLogin()}
             type="button"
             className="w-full flex items-center justify-center gap-3 bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-700 font-bold py-3.5 px-4 rounded-xl transition-all mb-6 active:scale-[0.98]"
             >

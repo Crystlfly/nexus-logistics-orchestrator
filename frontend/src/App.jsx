@@ -7,6 +7,8 @@ import WarehouseManagement from './components/warehouse.jsx';
 import Signup from './components/Signup.jsx';
 import Login from './components/Login.jsx';
 import NexusSplash from './components/NexusSplash.jsx';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import ResetPasswordPage from './components/ResetPassword.jsx';
 import { jwtDecode } from 'jwt-decode';
 
 import { useState, useEffect } from 'react';
@@ -91,16 +93,22 @@ function App() {
     return <NexusSplash />;
   }
 
-  if (!isLoggedIn) {
-    if (activeTab === 'signup') {
-      return <Signup onLoginClick={() => setActiveTab('login')} />;
-    }
-    return <Login onLogin={handleLogin} onSignupClick={() => setActiveTab('signup')} />;
-  }
-
   return (
-    // Pass setActiveTab and activeTab to Dashboard so the sidebar can control them
-    <Dashboard setActiveTab={setActiveTab} activeTab={activeTab}>
+    <Router>
+      <Routes>
+        {/* Dynamic Reset Password Route - THIS FIXES THE "CANNOT GET" ERROR */}
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+
+        {/* Catch-all route for your main Dashboard/Login logic */}
+        <Route path="*" element={
+          !isLoggedIn ? (
+            activeTab === 'signup' ? (
+              <Signup onLoginClick={() => setActiveTab('login')} />
+            ) : (
+              <Login onLogin={handleLogin} onSignupClick={() => setActiveTab('signup')} />
+            )
+          ) : (
+    <Dashboard setActiveTab={setActiveTab} activeTab={activeTab} onLogout={handleLogout}>
       
       {/* 2. Conditional Rendering Logic */}
       {activeTab === 'dashboard' && (
@@ -153,6 +161,10 @@ function App() {
       {activeTab === 'fleet' && <Fleet />}
       {activeTab === 'warehouse' && <WarehouseManagement />}
     </Dashboard>
+    )
+    } />
+      </Routes>
+    </Router>
   );
 }
 

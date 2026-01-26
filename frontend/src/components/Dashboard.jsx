@@ -5,10 +5,11 @@ import {
   Truck,
   Warehouse,
   Plus,
-  CirclePile
+  CirclePile,
+  LogOut
 } from "lucide-react";
 
-const Dashboard = ({ children, setActiveTab, activeTab }) => {
+const Dashboard = ({ children, setActiveTab, activeTab, onLogout}) => {
   return (
     <div className="flex w-full min-h-screen bg-[#0B0E14] text-zinc-400 font-sans">
       {/* Sidebar */}
@@ -44,9 +45,15 @@ const Dashboard = ({ children, setActiveTab, activeTab }) => {
             <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] text-white">OM</div>
             <div className="overflow-hidden">
               <p className="text-xs font-bold text-white truncate">Ops Manager</p>
-              <p className="text-[10px] text-zinc-500 truncate">manager@nexus.io</p>
+              {/* <p className="text-[10px] text-zinc-500 truncate">manager@nexus.io</p> */}
             </div>
           </div>
+          <button 
+          onClick={onLogout}
+          className="w-full hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 px-4 py-2 rounded-lg text-sm font-medium transition-all">
+            <LogOut size={16} className="inline-block mr-2" />
+            Logout
+          </button>
         </div>
       </aside>
 

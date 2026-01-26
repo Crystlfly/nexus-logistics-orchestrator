@@ -1,9 +1,13 @@
-import React from 'react';
+import {useState} from 'react';
 import { Globe, LineChart, ShieldCheck, ArrowRight, Eye, Lock } from 'lucide-react';
 import { Chrome } from 'lucide-react';
+import ForgotPassword from './forgotPassword.jsx';
+import { useGoogleLogin } from '@react-oauth/google';
+
 
 const LoginSplit = ({ onLogin, onSignupClick }) => {
-  const [formData, setFormData] = React.useState({
+  const [view, setView] = useState('login');
+  const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
@@ -28,9 +32,32 @@ const LoginSplit = ({ onLogin, onSignupClick }) => {
       console.error("Login Error:",err);
     }
   }
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        const res = await fetch("http://localhost:3000/api/google", {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: tokenResponse.access_token })
+        });
+        const data = await res.json();
+        if (data.success) {
+          localStorage.setItem('nexus_token', data.token);
+          window.location.reload(); // Quick way to refresh auth state
+        }
+      } catch (err) {
+        console.error("Google Signup Error:", err);
+      }
+    },
+    onError: () => console.log('Login Failed'),
+  });
+
+  if(view==="forgotPassword"){
+    return <ForgotPassword />;
+  }
+
   return (
     <div className="min-h-screen bg-[#0B0E14] flex font-sans relative overflow-hidden">
-      {/* Background Grid Pattern */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
            style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }}>
       </div>
@@ -64,6 +91,7 @@ const LoginSplit = ({ onLogin, onSignupClick }) => {
           <p className="text-zinc-500 text-sm mb-10 font-medium">Sign in to access your command center</p>
           
             <button 
+            onClick={()=>googleLogin()}
             type="button"
             className="w-full flex items-center justify-center gap-3 bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-700 font-bold py-3.5 px-4 rounded-xl transition-all mb-6 active:scale-[0.98]"
             >
@@ -94,7 +122,10 @@ const LoginSplit = ({ onLogin, onSignupClick }) => {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Password</label>
-                <button type="button" className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">Forgot password?</button>
+                <button 
+                onClick={()=>{ setView('forgotPassword'); }}
+                type="button" className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter">
+                  Forgot password?</button>
               </div>
               <div className="relative">
                 <input type="password" placeholder="Enter your password" 
