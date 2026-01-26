@@ -7,6 +7,8 @@ import login from './login.js';
 import signup from './signup.js';
 import fleet from './components/fleet.js';
 import inventory from './components/inventory.js';
+import forgotPass from './components/forgotPass.js';
+import google from './google.js';
 
 dotenv.config();
 
@@ -22,6 +24,9 @@ app.use(login);
 app.use(signup);
 app.use(fleet);
 app.use(inventory);
+app.use(forgotPass);
+app.use(google);
+
 
 app.get('/api/logistics/dispatch-queue', async (req, res) => {
     try {
