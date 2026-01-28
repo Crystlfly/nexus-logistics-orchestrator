@@ -1,20 +1,31 @@
 import React from 'react';
-import { useEffect } from 'react';
-import { Truck, MapPin, Gauge, Fuel, Calendar, Plus, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Truck, MapPin, Gauge, Fuel, Calendar, Plus, Search, Loader2 } from 'lucide-react';
 
 const Fleet = () => {
-  const [fleetData, setFleetData] = React.useState([]);
+  const [fleetData, setFleetData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   useEffect(() => {
-    fetch("http://localhost:3000/api/fleet")
-    .then((res)=>res.json())
-    .then((response)=> {
-      // console.log("Fleet Data:",data);
-      if (response.status === 200) {
-        setFleetData(response.data);
+    const fetchFleet = async () => {
+      try{
+        const response = await fetch("http://localhost:3000/api/fleet");
+        const data = await response.json();
+        // console.log("Fleet Data:",data);
+        if (data.status === 200) {
+          setFleetData(data.data);
+          }
+        }
+       catch (err) {
+        console.error("Fleet API Error:", err);
+      } finally {
+        setIsLoading(false);
       }
-    })
-    .catch((err)=>console.error("Fleet API Error:",err));
+    }
+    fetchFleet();
   }, []);
+
+  if (isLoading) return <div className="min-h-screen bg-[#0B0E14] flex items-center justify-center text-zinc-500"><Loader2 className="animate-spin mr-2" /> Loading...</div>;
+  
   return (
     <div className="animate-in fade-in duration-500">
       <header className="my-5 flex justify-between items-end">

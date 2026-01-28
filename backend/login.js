@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import sql from 'mssql';
 import dbconfigSetup from './dbconfigSetup.js';
 import jwt from 'jsonwebtoken';
+import {establishConnection} from './utils/dbhelper.js';
 
 const config = dbconfigSetup;
 const router = Router();
@@ -11,7 +12,7 @@ router.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
     
     try {
-        let pool = await sql.connect(config);
+        let pool = await establishConnection(config);
         
         // 1. Find user by email only (using Prepared Statements)
         let result = await pool.request()

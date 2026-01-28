@@ -1,21 +1,28 @@
 import React, { use } from 'react';
-import { Package, TrendingDown, TrendingUp, AlertCircle, Search, Download, Plus } from 'lucide-react';
-import { useEffect } from 'react';
+import { Package, TrendingDown, TrendingUp, AlertCircle, Search, Download, Plus, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 const Inventory = () => {
-  const [inventoryData, setInventoryData] = React.useState([]);
+  const [inventoryData, setInventoryData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   useEffect(() => {
-    fetch("http://localhost:3000/api/inventory")
-    .then((res)=>res.json())
-    .then((response)=> {
-      // console.log("Inventory Data:",data);
-      if (response.status === 200) {
-        setInventoryData(response.data);
+    const fetchInventory = async () => {
+      try{
+        const response=await fetch("http://localhost:3000/api/inventory")
+        const data=await response.json();
+        if (data.status === 200) {
+          setInventoryData(data.data);
+        }
+      }catch{(err)=>console.error("Inventory API Error:",err)}
+      finally{
+        setIsLoading(false);
       }
-    })
-    .catch((err)=>console.error("Inventory API Error:",err));
+    }
+    fetchInventory();
   }, []);
 
+  if (isLoading) return <div className="min-h-screen bg-[#0B0E14] flex items-center justify-center text-zinc-500"><Loader2 className="animate-spin mr-2" /> Loading...</div>;
+  
   return (
     <div className="animate-in fade-in duration-500">
       <header className="my-5 flex justify-between items-end">
