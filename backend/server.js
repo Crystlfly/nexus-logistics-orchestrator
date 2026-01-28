@@ -7,6 +7,7 @@ import login from './login.js';
 import signup from './signup.js';
 import fleet from './components/fleet.js';
 import inventory from './components/inventory.js';
+import warehouses from './components/warehouse.js';
 import forgotPass from './components/forgotPass.js';
 import google from './google.js';
 
@@ -24,6 +25,7 @@ app.use(login);
 app.use(signup);
 app.use(fleet);
 app.use(inventory);
+app.use(warehouses);
 app.use(forgotPass);
 app.use(google);
 
