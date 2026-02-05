@@ -2,14 +2,16 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { 
   Home, Activity, Users, DollarSign, Clock, 
   Search, Download, Plus, MapPin, 
-  Anchor, Truck, Package, Loader2, X, Filter
+  Anchor, Truck, Package, Loader2, X, Filter, MoreVertical
 } from 'lucide-react';
+import WarehouseModal from './WarehouseModal.jsx';
 
 const WarehouseManagement = () => {
   const [warehouseData, setWarehouseData] = useState([]);
   const [zoneData, setZoneData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isOpen, setIsOpen] = useState(false);
   
   // 🆕 STATE FOR MODAL
   const [showAllZones, setShowAllZones] = useState(false);
@@ -80,7 +82,7 @@ const WarehouseManagement = () => {
         if (!a.alert && b.alert) return 1;
         return b.occupancy - a.occupancy;
       })
-      .slice(0, 6); // ✂️ Only show top 6 on dashboard
+      .slice(0, 6);
   }, [zoneData]);
 
   // ✅ 4. Derived Metrics
@@ -119,11 +121,16 @@ const WarehouseManagement = () => {
           <button className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 text-zinc-400 px-4 py-2 rounded-lg text-sm font-bold hover:bg-zinc-800 transition-all">
             <Download size={16} /> Export CSV
           </button>
-          <button className="flex items-center gap-2 bg-emerald-500 text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-400 transition-all">
+          <button 
+          onClick={()=>setIsOpen(true)}
+          className="flex items-center gap-2 bg-emerald-500 text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-400 transition-all">
             <Plus size={16} /> Add Facility
           </button>
         </div>
       </header>
+
+      {/* Modal */}
+      <WarehouseModal isOpen={isOpen} onCloseAction={() => setIsOpen(false)} />
 
       {/* Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -289,64 +296,73 @@ const WarehouseRow = ({ data }) => {
     return <Package size={12} />;
   };
   return (
-    <tr className="hover:bg-white/[0.02] transition-colors group">
-      <td className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-zinc-800 flex items-center justify-center text-zinc-500 font-bold text-[10px]">
-            {data.id ? data.id.split('-')[1] : '##'}
-          </div>
-          <div>
-            <p className="text-white font-bold text-sm">{data.name}</p>
-            <div className="flex items-center gap-1 text-zinc-500 mt-0.5">
-              <MapPin size={10} />
-              <span className="text-[11px]">{data.location}</span>
-            </div>
-          </div>
+  <tr className="hover:bg-white/[0.02] transition-colors group">
+    <td className="p-4">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded bg-zinc-800 flex items-center justify-center text-zinc-500 font-bold text-[10px]">
+          {data.id ? data.id.split('-')[1] : '##'}
         </div>
-      </td>
-      <td className="p-4">
-        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide border
-          ${data.type === 'Port' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 
-            data.type === 'Distribution' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 
-            'bg-zinc-800 text-zinc-400 border-zinc-700'}`}>
-          {getTypeIcon(data.type)}
-          {data.type}
-        </div>
-      </td>
-      <td className="p-4">
-        <div className="flex items-center gap-2 text-zinc-300">
-          <Users size={14} className="text-zinc-500" />
-          <span className="font-bold text-xs">{data.staff}</span>
-        </div>
-      </td>
-      <td className="p-4">
-        <div className="w-full max-w-[180px]">
-          <div className="flex justify-between mb-1.5">
-            <span className="text-[10px] font-bold text-zinc-400">
-              {(data.usedCap || 0).toLocaleString()} <span className="text-zinc-600 font-normal">/ {(data.totalCap || 0).toLocaleString()}</span>
-            </span>
-            <span className={`text-[10px] font-bold ${util > 90 ? 'text-rose-500' : 'text-emerald-500'}`}>
-              {util}%
-            </span>
-          </div>
-          <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full ${util > 90 ? 'bg-rose-500' : util > 75 ? 'bg-orange-500' : 'bg-emerald-500'}`} style={{ width: `${util}%` }} />
+        <div>
+          <p className="text-white font-bold text-sm">{data.name}</p>
+          <div className="flex items-center gap-1 text-zinc-500 mt-0.5">
+            <MapPin size={10} />
+            <span className="text-[11px]">{data.location}</span>
           </div>
         </div>
-      </td>
-      <td className="p-4 text-right">
-        <p className="text-zinc-300 font-mono font-bold text-xs">${(data.cost || 0).toLocaleString()}</p>
-        <p className="text-[9px] text-zinc-600 uppercase">Per Day</p>
-      </td>
-      <td className="p-4 text-right">
-         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border 
+      </div>
+    </td>
+    <td className="p-4">
+      <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide border
+        ${data.type === 'Port' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 
+          data.type === 'Distribution' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 
+          'bg-zinc-800 text-zinc-400 border-zinc-700'}`}>
+        {getTypeIcon(data.type)}
+        {data.type}
+      </div>
+    </td>
+    <td className="p-4">
+      <div className="flex items-center gap-2 text-zinc-300">
+        <Users size={14} className="text-zinc-500" />
+        <span className="font-bold text-xs">{data.staff}</span>
+      </div>
+    </td>
+    <td className="p-4">
+      <div className="w-full max-w-[180px]">
+        <div className="flex justify-between mb-1.5">
+          <span className="text-[10px] font-bold text-zinc-400">
+            {(data.usedCap || 0).toLocaleString()} <span className="text-zinc-600 font-normal">/ {(data.totalCap || 0).toLocaleString()}</span>
+          </span>
+          <span className={`text-[10px] font-bold ${util > 90 ? 'text-rose-500' : 'text-emerald-500'}`}>
+            {util}%
+          </span>
+        </div>
+        <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+          <div className={`h-full rounded-full ${util > 90 ? 'bg-rose-500' : util > 75 ? 'bg-orange-500' : 'bg-emerald-500'}`} style={{ width: `${util}%` }} />
+        </div>
+      </div>
+    </td>
+    <td className="p-4 text-right">
+      <p className="text-zinc-300 font-mono font-bold text-xs">${(data.cost || 0).toLocaleString()}</p>
+      <p className="text-[9px] text-zinc-600 uppercase">Per Day</p>
+    </td>
+    
+    {/* --- Modified Last Cell for Action Button --- */}
+    <td className="p-4">
+      <div className="flex items-center justify-end gap-3">
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border 
           ${data.status === 'Active' ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' : 'text-orange-400 border-orange-500/20 bg-orange-500/5'}`}>
           <div className={`w-1.5 h-1.5 rounded-full ${data.status === 'Active' ? 'bg-emerald-500 animate-pulse' : 'bg-orange-500'}`} />
           {data.status}
         </span>
-      </td>
-    </tr>
-  );
+
+        {/* The Menu Button (Visible on Hover) */}
+        <button className="text-zinc-500 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100">
+          <MoreVertical size={16} />
+        </button>
+      </div>
+    </td>
+  </tr>
+);
 };
 
 const ZoneCard = ({ name, location, items, capacity, temp, occupancy, type, alert }) => (

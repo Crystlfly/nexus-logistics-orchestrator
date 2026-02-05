@@ -1,10 +1,14 @@
 import React, { use } from 'react';
-import { Package, TrendingDown, TrendingUp, AlertCircle, Search, Download, Plus, Loader2 } from 'lucide-react';
+import { Package, TrendingDown, TrendingUp, AlertCircle, Search, Download, Plus, Loader2, MoreVertical } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import InventoryModal from './InventoryModal';
 
 const Inventory = () => {
   const [inventoryData, setInventoryData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  
+
   useEffect(() => {
     const fetchInventory = async () => {
       try{
@@ -34,11 +38,15 @@ const Inventory = () => {
           <button className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-lg text-sm font-bold transition-all">
             <Download size={16} /> Export Report
           </button>
-          <button className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+          <button 
+          onClick={()=>setIsOpen(true)}
+          className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)]">
             <Plus size={16} /> Add New SKU
           </button>
         </div>
       </header>
+
+      <InventoryModal isOpen={isOpen} onCloseAction={() => setIsOpen(false)} /> 
 
       {/* Inventory Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -139,33 +147,44 @@ const InventoryRow = ({ sku, name, cat, wh, cur, opt, status, val }) => {
   };
 
   return (
-    <tr className="hover:bg-white/[0.02] transition-colors group">
-      <td className="px-6 py-4 text-xs font-mono font-bold text-emerald-500/80">{sku}</td>
-      <td className="px-6 py-4 text-xs font-bold text-white">{name}</td>
-      <td className="px-6 py-4 text-[11px] text-zinc-500">{cat}</td>
-      <td className="px-6 py-4 text-[11px] text-zinc-400 font-medium">{wh}</td>
-      <td className="px-6 py-4 text-xs font-bold text-zinc-300">
-        {cur} <span className="text-zinc-600 font-normal">/ {opt}</span>
-      </td>
-      <td className="px-6 py-4 min-w-[120px]">
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] font-bold text-zinc-500 w-6">{Math.round(percent)}%</span>
-          <div className="flex-1 bg-zinc-800 h-1.5 rounded-full overflow-hidden">
-            <div 
-              className={`h-full transition-all duration-700 ${percent < 25 ? 'bg-rose-500' : percent < 50 ? 'bg-orange-500' : 'bg-emerald-500'}`} 
-              style={{ width: `${percent}%` }}
-            />
-          </div>
+  <tr className="hover:bg-white/[0.02] transition-colors group">
+    <td className="px-6 py-4 text-xs font-mono font-bold text-emerald-500/80">{sku}</td>
+    <td className="px-6 py-4 text-xs font-bold text-white">{name}</td>
+    <td className="px-6 py-4 text-[11px] text-zinc-500">{cat}</td>
+    <td className="px-6 py-4 text-[11px] text-zinc-400 font-medium">{wh}</td>
+    <td className="px-6 py-4 text-xs font-bold text-zinc-300">
+      {cur} <span className="text-zinc-600 font-normal">/ {opt}</span>
+    </td>
+    <td className="px-6 py-4 min-w-[120px]">
+      <div className="flex items-center gap-3">
+        <span className="text-[10px] font-bold text-zinc-500 w-6">{Math.round(percent)}%</span>
+        <div className="flex-1 bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+          <div 
+            className={`h-full transition-all duration-700 ${percent < 25 ? 'bg-rose-500' : percent < 50 ? 'bg-orange-500' : 'bg-emerald-500'}`} 
+            style={{ width: `${percent}%` }}
+          />
         </div>
-      </td>
-      <td className="px-6 py-4">
-        <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusColor(status)}`}>
-          {status}
-        </span>
-      </td>
-      <td className="px-6 py-4 text-right text-xs font-bold text-white">{val}</td>
-    </tr>
-  );
+      </div>
+    </td>
+    <td className="px-6 py-4">
+      <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getStatusColor(status)}`}>
+        {status}
+      </span>
+    </td>
+    
+    {/* --- Modified Last Column --- */}
+    <td className="px-6 py-4 text-right">
+      <div className="flex items-center justify-end gap-3">
+        <span className="text-xs font-bold text-white">{val}</span>
+        
+        {/* Triple Dot Button (Visible on Hover) */}
+        <button className="text-zinc-500 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100">
+          <MoreVertical size={16} />
+        </button>
+      </div>
+    </td>
+  </tr>
+);
 };
 
 export default Inventory;

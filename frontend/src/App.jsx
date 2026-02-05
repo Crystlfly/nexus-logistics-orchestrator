@@ -10,6 +10,7 @@ import NexusSplash from './components/NexusSplash.jsx';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ResetPasswordPage from './components/ResetPassword.jsx';
 import { jwtDecode } from 'jwt-decode';
+import OrderModal from './components/OrderModal.jsx';
 
 import { useState, useEffect } from 'react';
 import {
@@ -30,6 +31,7 @@ import {
 
 function App() {
   // 1. State for View Switching
+  const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     const token = localStorage.getItem('nexus_token');
@@ -119,7 +121,9 @@ function App() {
               <h1 className="text-2xl font-black text-white tracking-tight">Nexus</h1>
               <p className="text-sm text-zinc-500 mt-1">Logistics Command Center</p>
             </div>
-            <button className="bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+            <button 
+            onClick={()=>setIsOpen(true)}
+            className="bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
               <Plus size={16} /> Place New Order
             </button>
           </header>
@@ -164,6 +168,7 @@ function App() {
     )
     } />
       </Routes>
+      <OrderModal isOpen={isOpen} onCloseAction={()=> setIsOpen(false)}/>
     </Router>
   );
 }

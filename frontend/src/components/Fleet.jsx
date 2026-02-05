@@ -1,10 +1,13 @@
 import React from 'react';
 import { useEffect, useState } from 'react';
-import { Truck, MapPin, Gauge, Fuel, Calendar, Plus, Search, Loader2 } from 'lucide-react';
+import { Truck, MapPin, Gauge, Fuel, Calendar, Plus, Search, Loader2, MoreVertical } from 'lucide-react';
+import FleetModal from './FleetModal';
 
 const Fleet = () => {
   const [fleetData, setFleetData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+
   useEffect(() => {
     const fetchFleet = async () => {
       try{
@@ -37,11 +40,15 @@ const Fleet = () => {
           <button className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-lg text-sm font-bold transition-all">
             <Calendar size={16} /> Schedule Maintenance
           </button>
-          <button className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-lg text-sm font-bold transition-all">
+          <button 
+          onClick={()=>setIsOpen(true)}
+          className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-lg text-sm font-bold transition-all">
             <Plus size={16} /> Add Vehicle
           </button>
         </div>
       </header>
+
+      <FleetModal isOpen={isOpen} onCloseAction={() => setIsOpen(false)} />
 
       {/* Fleet Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -109,35 +116,54 @@ const FleetStat = ({ icon, label, value, trend, color }) => (
 );
 
 const FleetRow = ({ id, type, driver, dist, route, loc, prog, fuel, status }) => (
-  <div className="p-4 hover:bg-white/[0.02] transition-colors grid grid-cols-1 md:grid-cols-6 gap-6 items-center">
-    <div>
-      <p className="text-emerald-500 font-mono text-xs font-bold">{id}</p>
-      <p className="text-[10px] text-zinc-500 uppercase font-bold">{type}</p>
+  
+
+// ... inside your component render ...
+
+<div className="p-4 hover:bg-white/[0.02] transition-colors grid grid-cols-1 md:grid-cols-6 gap-6 items-center group">
+  {/* Column 1: ID */}
+  <div>
+    <p className="text-emerald-500 font-mono text-xs font-bold">{id}</p>
+    <p className="text-[10px] text-zinc-500 uppercase font-bold">{type}</p>
+  </div>
+
+  {/* Column 2: Driver */}
+  <div>
+    <p className="text-white text-xs font-bold">{driver}</p>
+    <p className="text-[10px] text-zinc-600">{dist}</p>
+  </div>
+
+  {/* Column 3: Route */}
+  <div>
+    <p className="text-white text-xs font-bold">{route}</p>
+    <p className="text-[10px] text-zinc-600 flex items-center gap-1"><MapPin size={8}/> {loc}</p>
+  </div>
+
+  {/* Column 4 & 5: Progress & Fuel */}
+  <div className="col-span-2 flex gap-4">
+    <div className="flex-1">
+      <div className="flex justify-between text-[9px] font-bold mb-1"><span className="text-zinc-500 uppercase">Progress</span><span className="text-zinc-300">{prog}%</span></div>
+      <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{ width: `${prog}%` }} /></div>
     </div>
-    <div>
-      <p className="text-white text-xs font-bold">{driver}</p>
-      <p className="text-[10px] text-zinc-600">{dist}</p>
-    </div>
-    <div>
-      <p className="text-white text-xs font-bold">{route}</p>
-      <p className="text-[10px] text-zinc-600 flex items-center gap-1"><MapPin size={8}/> {loc}</p>
-    </div>
-    <div className="col-span-2 flex gap-4">
-      <div className="flex-1">
-        <div className="flex justify-between text-[9px] font-bold mb-1"><span className="text-zinc-500 uppercase">Progress</span><span className="text-zinc-300">{prog}%</span></div>
-        <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden"><div className="h-full bg-blue-500" style={{ width: `${prog}%` }} /></div>
-      </div>
-      <div className="flex-1">
-        <div className="flex justify-between text-[9px] font-bold mb-1"><span className="text-zinc-500 uppercase flex items-center gap-1"><Fuel size={8}/> Fuel: {fuel}%</span></div>
-        <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden"><div className={`h-full ${fuel < 20 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${fuel}%` }} /></div>
-      </div>
-    </div>
-    <div className="text-right">
-      <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${status === 'In-Transit' ? 'text-blue-400 border-blue-500/20 bg-blue-500/10' : status === 'Maintenance' ? 'text-rose-400 border-rose-500/20 bg-rose-500/10' : 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10'}`}>
-        {status}
-      </span>
+    <div className="flex-1">
+      <div className="flex justify-between text-[9px] font-bold mb-1"><span className="text-zinc-500 uppercase flex items-center gap-1"><Fuel size={8}/> Fuel: {fuel}%</span></div>
+      <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden"><div className={`h-full ${fuel < 20 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${fuel}%` }} /></div>
     </div>
   </div>
+
+  {/* Column 6: Status & Action Button */}
+  <div className="flex items-center justify-end gap-3">
+    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${status === 'In-Transit' ? 'text-blue-400 border-blue-500/20 bg-blue-500/10' : status === 'Maintenance' ? 'text-rose-400 border-rose-500/20 bg-rose-500/10' : 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10'}`}>
+      {status}
+    </span>
+    
+    {/* The Triple Dot Button */}
+    <button className="text-zinc-500 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100">
+      <MoreVertical size={16} />
+    </button>
+  </div>
+  
+</div>
 );
 
 export default Fleet;
