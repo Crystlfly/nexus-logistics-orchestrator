@@ -10,6 +10,8 @@ import inventory from './components/inventory.js';
 import warehouses from './components/warehouse.js';
 import forgotPass from './components/forgotPass.js';
 import google from './google.js';
+import order from './components/order.js';
+import logistic from './components/logistic.js';
 
 dotenv.config();
 
@@ -28,6 +30,8 @@ app.use(inventory);
 app.use(warehouses);
 app.use(forgotPass);
 app.use(google);
+app.use(order);
+app.use(logistic);
 
 
 app.get('/api/logistics/dispatch-queue', async (req, res) => {
