@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { X, Package, AlertCircle, Building2, Tag, MapPin, DollarSign, Users, Box, Activity, Loader2 } from "lucide-react";
-export default function WarehouseModal({ isOpen, onCloseAction }) {
+export default function WarehouseModal({ isOpen, onCloseAction, initialToBeUpdatedData }) {
     const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
     const [errorMessage, setErrorMessage] = useState('');
+
+    const editMode = Boolean(initialToBeUpdatedData);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -16,6 +18,34 @@ export default function WarehouseModal({ isOpen, onCloseAction }) {
         status: ''
     });
 
+    useEffect(() => {
+        if (initialToBeUpdatedData) {
+            setFormData({
+                name: initialToBeUpdatedData.name || '',
+                latitude: initialToBeUpdatedData.lat || '',
+                longitude: initialToBeUpdatedData.long || '',
+                operating_cost: initialToBeUpdatedData.cost || '',
+                total_capacity: initialToBeUpdatedData.totalCap || '',
+                used_capacity: initialToBeUpdatedData.usedCap || '',
+                total_staff: initialToBeUpdatedData.staff || '',
+                status: initialToBeUpdatedData.status || ''
+            });
+        }
+        else{
+            setFormData({
+                name: '',
+                latitude: '',
+                longitude: '',
+                operating_cost: '',
+                warehouse_type: '',
+                total_capacity: '',
+                used_capacity: '',
+                total_staff: '',
+                status: ''
+            });
+        }
+    }, [initialToBeUpdatedData, isOpen]);
+
     if (!isOpen) return null;
 
     const handleSubmit = async (e) => {
@@ -25,25 +55,41 @@ export default function WarehouseModal({ isOpen, onCloseAction }) {
 
         const token = localStorage.getItem('nexus_token');
         try{
-            const response = await fetch('http://localhost:3000/api/addWarehouse', {
-                method: 'POST',
+            const payload = {
+                name: formData.name,
+                lat: parseFloat(formData.latitude),
+                long: parseFloat(formData.longitude),
+                operating_cost: parseFloat(formData.operating_cost),
+                warehouse_type: formData.warehouse_type,
+                total_capacity: parseFloat(formData.total_capacity),
+                used_capacity: parseFloat(formData.used_capacity),
+                total_staff: parseInt(formData.total_staff),
+                status: formData.status
+            };
+
+            const endpoint = editMode ? `http://localhost:3000/api/updateWarehouse/${initialToBeUpdatedData.warehouse_id}` : 'http://localhost:3000/api/addWarehouse';
+            const method = editMode ? 'PUT' : 'POST';
+            const response = await fetch(endpoint, {
+                method: method,
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(payload)
             });
 
             // 1. Check if the HTTP request was successful (Status 200-299)
             if (response.ok) {
-                // Optional: You can access the data sent back if you want
-                // const data = await response.json(); 
                 setStatus('success');
+                setTimeout(() => {
+                    onCloseAction();
+                    setStatus('idle');
+                }, 2000);
             } 
             else {
                 // 2. If response.ok is false (e.g. 400 or 500 error), get the error message
                 const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to create warehouse');
+                throw new Error(errorData.message || (editMode ? 'Failed to update warehouse' : 'Failed to create warehouse'));
             }
         } catch (error) {
             setStatus('error');
@@ -62,7 +108,7 @@ export default function WarehouseModal({ isOpen, onCloseAction }) {
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-[#161A22]">
                     <div>
-                        <h2 className="text-lg font-bold text-white tracking-tight">Add Facility</h2>
+                        <h2 className="text-lg font-bold text-white tracking-tight">{editMode ? "Update Facility" : "Add Facility"}</h2>
                         <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Nexus Logistics Protocol</p>
                     </div>
                     <button 
@@ -86,7 +132,7 @@ export default function WarehouseModal({ isOpen, onCloseAction }) {
                     {status === 'success' && (
                         <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-lg flex items-center gap-3">
                             <Package className="text-emerald-500 shrink-0" size={18} />
-                            <p className="text-xs font-bold text-emerald-200">Warehouse added successfully!</p>
+                            <p className="text-xs font-bold text-emerald-200">{editMode ? "Warehouse updated successfully!" : "Warehouse added successfully!"}</p>
                         </div>
                     )}
 
@@ -253,9 +299,9 @@ export default function WarehouseModal({ isOpen, onCloseAction }) {
         {status === 'loading' ? (
             <>
                 <Loader2 size={16} className="animate-spin" />
-                Creating...
+                {editMode ? "Updating..." : "Creating..."}
             </>
-        ) : 'Create Facility'}
+        ) : editMode ? "Update Facility" : "Create Facility"}
     </button>
 </div>
                         </>

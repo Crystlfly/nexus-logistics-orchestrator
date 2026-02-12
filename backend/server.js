@@ -12,6 +12,7 @@ import forgotPass from './components/forgotPass.js';
 import google from './google.js';
 import order from './components/order.js';
 import logistic from './components/logistic.js';
+import user from './components/user.js';
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use(forgotPass);
 app.use(google);
 app.use(order);
 app.use(logistic);
+app.use(user);
 
 
 app.get('/api/logistics/dispatch-queue', async (req, res) => {

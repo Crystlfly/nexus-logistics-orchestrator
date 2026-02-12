@@ -6,7 +6,8 @@ import {
   Warehouse,
   Plus,
   CirclePile,
-  LogOut
+  LogOut,
+  User
 } from "lucide-react";
 
 const Dashboard = ({ children, setActiveTab, activeTab, onLogout}) => {
@@ -37,6 +38,9 @@ const Dashboard = ({ children, setActiveTab, activeTab, onLogout}) => {
           </button>
           <button onClick={()=> setActiveTab('warehouse')} className="w-full">
             <SideItem icon={<Warehouse size={18}/>} label="Warehouse" active={activeTab === 'warehouse'} />
+          </button>
+          <button onClick={()=> setActiveTab('user')} className="w-full">
+            <SideItem icon={<User size={18}/>} label="Users" active={activeTab === 'user'} />
           </button>
         </nav>
 

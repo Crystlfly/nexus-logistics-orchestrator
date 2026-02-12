@@ -1,9 +1,11 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import { X, AlertCircle, Truck, User, Building2, Activity, MapPin, Fuel, Gauge, TrendingUp, Loader2 } from 'lucide-react';
 
-export default function FleetModal({isOpen, onCloseAction}){
+export default function FleetModal({isOpen, onCloseAction, initialToBeUpdatedData = null}) {
     const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
     const [errorMessage, setErrorMessage] = useState('');
+
+    const editMode = Boolean(initialToBeUpdatedData);
     
     const [formData, setFormData] = useState({
         driverName: '',
@@ -15,6 +17,35 @@ export default function FleetModal({isOpen, onCloseAction}){
         currentRoute: '',
         odometer: ''
     });
+
+    useEffect(()=>{
+        if (initialToBeUpdatedData) {
+            setFormData({
+                driverName: initialToBeUpdatedData.driver_name || '',
+                vehicleType: initialToBeUpdatedData.vehicle_type || '',
+                status: initialToBeUpdatedData.status || '',
+                currentWarehouseId: initialToBeUpdatedData.current_warehouse_id || '',
+                fuelLevel: initialToBeUpdatedData.fuel_level || '',
+                progress: initialToBeUpdatedData.progress || '',
+                currentRoute: initialToBeUpdatedData.current_route || '',
+                odometer: initialToBeUpdatedData.odometer || ''
+            });
+        }
+        else{
+            setFormData({
+                driverName: '',
+                vehicleType: '',
+                status: '',
+                currentWarehouseId: '',
+                fuelLevel: '',
+                progress: '',
+                currentRoute: '',
+                odometer: ''
+            });
+        }
+    }, [initialToBeUpdatedData, isOpen]);
+
+    
     
     if (!isOpen) return null;
     
@@ -39,8 +70,10 @@ export default function FleetModal({isOpen, onCloseAction}){
         };
 
         try {
-            const response = await fetch('http://localhost:3000/api/addFleet', {
-                method: 'POST',
+            const endpoint = editMode ? `http://localhost:3000/api/updateFleet/${initialToBeUpdatedData.vehicle_id}` : 'http://localhost:3000/api/addFleet';
+            const method = editMode ? 'PUT' : 'POST';
+            const response = await fetch(endpoint, {
+                method: method,
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
@@ -78,7 +111,7 @@ export default function FleetModal({isOpen, onCloseAction}){
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-[#161A22]">
                     <div>
-                        <h2 className="text-lg font-bold text-white tracking-tight">Add New Vehicle</h2>
+                        <h2 className="text-lg font-bold text-white tracking-tight">{editMode ? "Update Vehicle" : "Add New Vehicle"}</h2>
                         <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Nexus Fleet Protocol</p>
                     </div>
                     <button 
@@ -104,7 +137,7 @@ export default function FleetModal({isOpen, onCloseAction}){
                     {status === 'success' && (
                         <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-lg flex items-center gap-3">
                             <Truck className="text-emerald-500 shrink-0" size={18} />
-                            <p className="text-xs font-bold text-emerald-200">Vehicle added to fleet successfully!</p>
+                            <p className="text-xs font-bold text-emerald-200">Vehicle {editMode ? 'updated' : 'added'} successfully!</p>
                         </div>
                     )}
 
@@ -256,9 +289,9 @@ export default function FleetModal({isOpen, onCloseAction}){
                                     {status === 'loading' ? (
                                         <>
                                             <Loader2 size={16} className="animate-spin" />
-                                            Adding Vehicle...
+                                            {editMode ? "Updating Vehicle..." : "Adding Vehicle..."}
                                         </>
-                                    ) : 'Confirm Addition'}
+                                    ) : <span className="uppercase tracking-tight">Confirm {editMode ? "Update" : "Addition"}</span>}
                                 </button>
                             </div>
                         </>

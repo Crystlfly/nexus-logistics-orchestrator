@@ -76,7 +76,7 @@ export async function deleteFleet(vehicleId) {
         const pool = await establishConnection(config);
         await pool.request()
             .input('id', sql.Int, vehicleId)
-            .query('DELETE FROM Fleet WHERE vehicle_id = @id');
+            .query('UPDATE Fleet SET isDeleted=1 WHERE vehicle_id = @id');
         return { status: "success", message: "Fleet deleted successfully" };
     } catch (err) {
         throw err;
