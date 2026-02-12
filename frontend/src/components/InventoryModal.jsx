@@ -1,9 +1,11 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import { X, Package, AlertCircle, Loader2, Barcode, Tag, Activity, Box, TrendingDown, DollarSign } from 'lucide-react';
 
-export default function InventoryModal({isOpen, onCloseAction}) {
+export default function InventoryModal({isOpen, onCloseAction, initialToBeUpdatedData = null}) {
     const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
     const [errorMessage, setErrorMessage] = useState('');
+
+    const editMode = Boolean(initialToBeUpdatedData);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -15,6 +17,32 @@ export default function InventoryModal({isOpen, onCloseAction}) {
         status: ''
     });
 
+    
+    useEffect(() => {
+        if (initialToBeUpdatedData) {
+            setFormData({
+                name: initialToBeUpdatedData.name || '',
+                sku: initialToBeUpdatedData.sku || '',
+                reorderLevel: initialToBeUpdatedData.reorder_level || '',
+                currentStock: initialToBeUpdatedData.current_stock || '',
+                unitPrice: initialToBeUpdatedData.unit_price || '',
+                category: initialToBeUpdatedData.category || '',
+                status: initialToBeUpdatedData.status || ''
+            });
+        }
+        else{
+            setFormData({
+                name: '',
+                sku: '',
+                reorderLevel: '',
+                currentStock: '',
+                unitPrice: '',
+                category: '',
+                status: ''
+            });
+        }
+    }, [initialToBeUpdatedData, isOpen]);
+
     if (!isOpen) return null;
 
     const handleSubmit = async (e) => {
@@ -23,26 +51,42 @@ export default function InventoryModal({isOpen, onCloseAction}) {
         setErrorMessage('');
 
         const token = localStorage.getItem('nexus_token');
+
+        const payload = {
+            name: formData.name,
+            sku: formData.sku,
+            category: formData.category,
+            status: formData.status,
+            
+            reorder_level: parseInt(formData.reorderLevel) || 0,
+            current_stock: parseInt(formData.currentStock) || 0,
+            unit_price: parseFloat(formData.unitPrice) || 0.00
+        };
+
         try{
-            const response = await fetch('http://localhost:3000/api/addProduct', {
-                method: 'POST',
+            const endpoint = editMode ? `http://localhost:3000/api/updateProduct/${initialToBeUpdatedData.product_id}` : 'http://localhost:3000/api/addProduct';
+            const method = editMode ? 'PUT' : 'POST';
+            const response = await fetch(endpoint, {
+                method: method,
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(payload)
             });
 
             // 1. Check if the HTTP request was successful (Status 200-299)
             if (response.ok) {
-                // Optional: You can access the data sent back if you want
-                // const data = await response.json(); 
                 setStatus('success');
+                setTimeout(() => {
+                    onCloseAction();
+                    setStatus('idle');
+                }, 2000);
             } 
             else {
                 // 2. If response.ok is false (e.g. 400 or 500 error), get the error message
                 const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to create warehouse');
+                throw new Error(errorData.message || (editMode ? 'Failed to update SKU' : 'Failed to add SKU'));
             }
         } catch (error) {
             setStatus('error');
@@ -61,7 +105,7 @@ export default function InventoryModal({isOpen, onCloseAction}) {
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-[#161A22]">
                     <div>
-                        <h2 className="text-lg font-bold text-white tracking-tight">Add New SKU</h2>
+                        <h2 className="text-lg font-bold text-white tracking-tight">{editMode ? "Update SKU" : "Add New SKU"}</h2>
                         <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Nexus Inventory Protocol</p>
                     </div>
                     <button 
@@ -87,7 +131,7 @@ export default function InventoryModal({isOpen, onCloseAction}) {
                     {status === 'success' && (
                         <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-lg flex items-center gap-3">
                             <Package className="text-emerald-500 shrink-0" size={18} />
-                            <p className="text-xs font-bold text-emerald-200">SKU added to inventory successfully!</p>
+                            <p className="text-xs font-bold text-emerald-200">{editMode ? "SKU updated successfully!" : "SKU added to inventory successfully!"}</p>
                         </div>
                     )}
 
@@ -222,9 +266,9 @@ export default function InventoryModal({isOpen, onCloseAction}) {
                                     {status === 'loading' ? (
                                         <>
                                             <Loader2 size={16} className="animate-spin" />
-                                            Adding SKU...
+                                            {editMode ? "Updating SKU..." : "Adding SKU..."}
                                         </>
-                                    ) : 'Add to Inventory'}
+                                    ) : editMode ? "Update SKU" : "Add to Inventory"}
                                 </button>
                             </div>
                         </>

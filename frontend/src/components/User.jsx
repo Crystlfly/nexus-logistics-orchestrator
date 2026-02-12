@@ -1,0 +1,337 @@
+import { Users as UsersIcon, Shield, UserCheck, UserX, Search, Download, Plus, Loader2, MoreVertical, ChevronLeft, ChevronRight, Edit, Trash2, Mail, Lock } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import UserModal from './UserModal';
+
+// Role Mapping for Visuals
+const ROLE_MAP = {
+  1: { label: 'Admin', color: 'purple' },
+  2: { label: 'Fleet Manager', color: 'blue' },
+  3: { label: 'Logistics Lead', color: 'emerald' },
+  4: { label: 'Driver', color: 'orange' },
+  0: { label: 'User', color: 'zinc' }
+};
+
+const Users = () => {
+  const [usersData, setUsersData] = useState([]);
+  const [stats, setStats] = useState({ total: 0, active: 0, admins: 0, suspended: 0 }); 
+  const [isLoading, setIsLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1); 
+  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("All Roles");
+
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const toggleMenu = (id) => setOpenMenuId(openMenuId === id ? null : id);
+
+  const itemsPerPage = 10;
+
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('nexus_token');
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchQuery,
+        category: roleFilter // Backend uses 'category' param for roles based on your snippet
+      });
+
+      const response = await fetch(`http://localhost:3000/api/users?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      const data = await response.json();
+
+      // Handling response based on your backend structure
+      // If backend returns raw array:
+      if (Array.isArray(data)) {
+        setUsersData(data);
+        // Calculate mock stats if backend doesn't provide them
+        setStats({
+          total: 128, // Mock or total count from headers if available
+          active: data.length,
+          admins: data.filter(u => u.RoleId === 1).length,
+          suspended: 2
+        });
+      } else {
+        // If backend matches Inventory structure
+        setUsersData(data.data || data); 
+      }
+
+    } catch (err) {
+      console.error("User API Error:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        fetchUsers();
+    }, 500);
+    return () => clearTimeout(timer); 
+  }, [currentPage, searchQuery, roleFilter]);
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to remove this user access?")) {
+      try {
+        const token = localStorage.getItem('nexus_token'); 
+        const response = await fetch(`http://localhost:3000/api/deleteUser/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`, 
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          fetchUsers(); 
+        } else {
+          alert('Failed to delete user');
+        }
+      } catch (err) {
+        console.error("Delete Error:", err);
+      }
+    }
+  };
+
+  const handleUpdate = (user) => {
+    setSelectedUser(user); 
+    setIsOpen(true); 
+  };
+
+  const handleCloseModal = () => {
+    setIsOpen(false);
+    setSelectedUser(null); 
+    fetchUsers();    
+  };
+
+  if (isLoading && currentPage === 1 && usersData.length === 0) {
+    return <div className="min-h-screen bg-[#0B0E14] flex items-center justify-center text-zinc-500">
+      <Loader2 className="animate-spin mr-2" /> Loading Nexus Protocol...
+    </div>;
+  }
+
+  return (
+    <div className="animate-in fade-in duration-500">
+      <header className="my-5 flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl font-black text-white tracking-tight">User Management</h1>
+          <p className="text-sm text-zinc-500 mt-1">Control access permissions and personnel roles</p>
+        </div>
+        <div className="flex gap-3">
+          <button className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-lg text-sm font-bold transition-all">
+            <Download size={16} /> Export List
+          </button>
+          <button 
+          onClick={()=>setIsOpen(true)}
+          className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+            <Plus size={16} /> Add User
+          </button>
+        </div>
+      </header>
+
+      <UserModal isOpen={isOpen} onCloseAction={handleCloseModal} initialData={selectedUser}/> 
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <UserStatCard icon={<UsersIcon />} label="Total Users" value={stats.total} trend="+12" color="blue" />
+        <UserStatCard icon={<UserCheck />} label="Active Now" value={stats.active} trend="+4" color="emerald" />
+        <UserStatCard icon={<Shield />} label="Administrators" value={stats.admins} trend="0" color="purple" />
+        <UserStatCard icon={<UserX />} label="Suspended" value={stats.suspended} trend="-1" color="rose" />
+      </div>
+
+      {/* Search & Filters */}
+      <div className="flex gap-4 bg-[#0F1219] p-4 rounded-xl border border-zinc-800 mb-6">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+          <input 
+            type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by name, email, or ID..." 
+            className="w-full bg-[#0B0E14] border border-zinc-800 rounded-lg py-2.5 pl-10 pr-4 text-sm text-zinc-300 focus:outline-none focus:border-emerald-500/50 transition-colors"
+          />
+        </div>
+        <select 
+        value={roleFilter}
+        onChange={(e) => setRoleFilter(e.target.value)}
+        className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-300 outline-none">
+          <option>All Roles</option>
+          <option value="1">Admin</option>
+          <option value="2">Fleet Manager</option>
+          <option value="3">Logistics Lead</option>
+          <option value="4">Driver</option>
+        </select>
+      </div>
+
+      {/* Users Table */}
+      <div className="bg-[#0F1219] border border-zinc-800 rounded-xl overflow-hidden shadow-2xl">
+        <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-white/[0.02]">
+          <h3 className="text-white font-bold text-sm">Personnel Roster</h3>
+          <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{usersData.length} users shown</span>
+        </div>
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="text-[10px] uppercase font-black text-zinc-500 tracking-wider border-b border-zinc-800 bg-[#161a23]">
+              <th className="px-6 py-4">User Details</th>
+              <th className="px-6 py-4">Email Address</th>
+              <th className="px-6 py-4">Role Permission</th>
+              <th className="px-6 py-4">Status</th>
+              <th className="px-6 py-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-800/50">
+            {usersData.map((user) => (
+              <UserRow 
+                key={user.UserId}
+                user={user}
+                isOpen={openMenuId === user.UserId}
+                onToggle={() => toggleMenu(user.UserId)}
+                onDelete={() => handleDelete(user.UserId)}
+                onUpdate={handleUpdate}
+              />
+            ))}
+            {usersData.length === 0 && (
+                <tr>
+                    <td colSpan="5" className="px-6 py-8 text-center text-zinc-500 text-sm font-medium">No users found matching parameters.</td>
+                </tr>
+            )}
+          </tbody>
+        </table>
+        
+        {/* Pagination Footer */}
+        <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-white/[0.02]">
+          <button 
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1 || isLoading}
+            className="flex items-center gap-1 text-xs font-bold text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft size={14} /> Previous
+          </button>
+          <span className="text-xs text-zinc-500 font-medium">
+            Page <span className="text-white">{currentPage}</span>
+          </span>
+          <button 
+            onClick={() => setCurrentPage(p => p + 1)}
+            disabled={isLoading || usersData.length < itemsPerPage}
+            className="flex items-center gap-1 text-xs font-bold text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            Next <ChevronRight size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const UserStatCard = ({ icon, label, value, trend, color }) => {
+    const getColor = (c) => {
+        if (c === 'emerald') return 'text-emerald-500 bg-emerald-500/10';
+        if (c === 'blue') return 'text-blue-500 bg-blue-500/10';
+        if (c === 'purple') return 'text-purple-500 bg-purple-500/10';
+        return 'text-rose-500 bg-rose-500/10';
+    };
+
+    return (
+        <div className="bg-[#0F1219] border border-zinc-800 p-5 rounded-xl group hover:border-zinc-700 transition-all">
+            <div className="flex justify-between items-start mb-4">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${getColor(color)}`}>
+                {icon}
+            </div>
+            <span className={`text-[10px] font-bold ${getColor(color).split(' ')[0]}`}>{trend}</span>
+            </div>
+            <p className="text-[11px] text-zinc-500 uppercase font-bold tracking-tight">{label}</p>
+            <h3 className="text-2xl font-bold text-white mt-1 group-hover:text-emerald-400 transition-colors">{value}</h3>
+        </div>
+    );
+};
+
+const UserRow = ({ user, isOpen, onToggle, onDelete, onUpdate }) => {
+  const { UserId, FullName, Email, RoleId } = user;
+  const roleConfig = ROLE_MAP[RoleId] || ROLE_MAP[0];
+  
+  // Mock status based on randomness or logic since API doesn't return it
+  const isOnline = UserId % 3 !== 0; 
+
+  const getRoleBadge = (color) => {
+    const colors = {
+        purple: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
+        blue: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+        emerald: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+        orange: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
+        zinc: 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20',
+    }
+    return colors[color] || colors.zinc;
+  }
+
+  return (
+  <tr className="hover:bg-white/[0.02] transition-colors group">
+    <td className="px-6 py-4">
+        <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-400">
+                {FullName?.charAt(0).toUpperCase()}
+            </div>
+            <div>
+                <div className="text-xs font-bold text-white">{FullName}</div>
+                <div className="text-[10px] text-zinc-600 font-mono">ID: {UserId}</div>
+            </div>
+        </div>
+    </td>
+    <td className="px-6 py-4">
+        <div className="flex items-center gap-2 text-xs text-zinc-400 font-medium">
+            <Mail size={12} className="text-zinc-600"/> {Email}
+        </div>
+    </td>
+    <td className="px-6 py-4">
+      <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${getRoleBadge(roleConfig.color)}`}>
+        {roleConfig.label}
+      </span>
+    </td>
+    <td className="px-6 py-4">
+        <div className="flex items-center gap-2">
+            <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-zinc-600'}`}></div>
+            <span className={`text-[11px] font-bold ${isOnline ? 'text-emerald-500' : 'text-zinc-500'}`}>
+                {isOnline ? 'Active Now' : 'Offline'}
+            </span>
+        </div>
+    </td>
+    
+    <td className="px-6 py-4 text-right relative"> 
+      <div className="flex items-center justify-end gap-3">
+        <div className="relative">
+          <button 
+            onClick={() => onToggle(UserId)} 
+            className="text-zinc-500 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100"
+          >
+            <MoreVertical size={16} />
+          </button>
+
+          {isOpen && (
+            <div className="absolute right-0 mt-2 w-32 bg-zinc-900 border border-zinc-700 rounded-md shadow-xl z-50 overflow-hidden">
+              <button 
+                onClick={() => onUpdate(user)}
+                className="w-full text-left px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white flex items-center gap-2"
+              >
+                <Edit size={14} /> Edit Access
+              </button>
+              <button 
+                onClick={() => onDelete(UserId)}
+                className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2"
+              >
+                <Trash2 size={14} /> Revoke
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </td>
+  </tr>
+);
+};
+
+export default Users;

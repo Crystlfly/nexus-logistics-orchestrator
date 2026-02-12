@@ -57,7 +57,7 @@ export async function updateProduct(productId, productData) {
                 SET name = @name, sku = @sku, reorder_level = @reorderLevel, 
                     current_stock = @currentStock, unit_price = @unitPrice, 
                     category = @category, status = @status
-                WHERE id = @id
+                WHERE product_id = @id
             `);
 
         return { status: "success", message: "Product updated successfully" };
@@ -71,7 +71,7 @@ export async function deleteProduct(productId) {
         const pool = await establishConnection(config);
         await pool.request()
             .input('id', sql.Int, productId)
-            .query('DELETE FROM Products WHERE id = @id');
+            .query('UPDATE Products SET isDeleted=1 WHERE product_id = @id');
             
         return { status: "success", message: "Product deleted successfully" };
     } catch (err) {

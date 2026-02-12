@@ -82,7 +82,7 @@ export async function updateWarehouse(warehouseId, warehouseData) {
             .input('status', sql.VarChar, status)
             .query(`
                 UPDATE Warehouses 
-                SET location = @location, latitude = @latitude, longitude = @longitude,
+                SET location_name = @location, latitude = @latitude, longitude = @longitude,
                     operating_cost_per_day = @operatingCost, warehouse_type = @type,
                     total_capacity_sqft = @totalCapacity, used_capacity_sqft = @usedCapacity,
                     total_staff = @staff, status = @status
@@ -98,7 +98,7 @@ export async function deleteWarehouse(warehouseId) {
         const pool = await establishConnection(config);
         await pool.request()
             .input('id', sql.Int, warehouseId)
-            .query(`DELETE FROM Warehouses WHERE warehouse_id = @id`);
+            .query(`UPDATE Warehouses SET isDeleted=1 WHERE warehouse_id = @id`);
     } catch (err) {
         throw err;
     }

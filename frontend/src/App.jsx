@@ -4,6 +4,7 @@ import Logistics from './components/Logistics.jsx';
 import Inventory from './components/Inventory';
 import Fleet from './components/Fleet.jsx';
 import WarehouseManagement from './components/warehouse.jsx';
+import User from './components/User.jsx';
 import Signup from './components/Signup.jsx';
 import Login from './components/Login.jsx';
 import NexusSplash from './components/NexusSplash.jsx';
@@ -164,6 +165,7 @@ function App() {
       {activeTab === 'inventory' && <Inventory />}
       {activeTab === 'fleet' && <Fleet />}
       {activeTab === 'warehouse' && <WarehouseManagement />}
+      {activeTab === 'user' && <User />}
     </Dashboard>
     )
     } />
