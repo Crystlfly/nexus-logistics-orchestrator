@@ -6,6 +6,8 @@ import { useGoogleLogin } from '@react-oauth/google';
 
 
 const LoginSplit = ({ onLogin, onSignupClick }) => {
+  const showSignupLink = false;
+  const [eyeToggele, setEyeToggle]= useState(false);
   const [view, setView] = useState('login');
   const [formData, setFormData] = useState({
     email: "",
@@ -89,23 +91,27 @@ const LoginSplit = ({ onLogin, onSignupClick }) => {
         <div className="w-full max-w-md bg-[#0F1219]/50 backdrop-blur-xl border border-zinc-800/50 p-10 rounded-3xl shadow-2xl">
           <h2 className="text-3xl font-black text-white mb-2 tracking-tight">Welcome back</h2>
           <p className="text-zinc-500 text-sm mb-10 font-medium">Sign in to access your command center</p>
-          
-            <button 
-            onClick={()=>googleLogin()}
-            type="button"
-            className="w-full flex items-center justify-center gap-3 bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-700 font-bold py-3.5 px-4 rounded-xl transition-all mb-6 active:scale-[0.98]"
-            >
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M12.48 10.92v3.28h4.74c-.2 1.06-.9 1.95-1.82 2.56l2.72 2.12c1.6-1.48 2.52-3.66 2.52-6.22 0-.44-.04-.88-.12-1.3l-8.04.56zM6.5 12c0-.62.11-1.22.32-1.78L4.05 7.82C3.39 9.08 3 10.5 3 12c0 1.5.39 2.92 1.05 4.18l2.77-2.4c-.21-.56-.32-1.16-.32-1.78zM12 7.3c1.33 0 2.53.46 3.47 1.37l2.6-2.6C16.5 4.53 14.4 3.5 12 3.5c-3.1 0-5.77 1.77-7.05 4.38l2.77 2.4c.67-1.89 2.47-3.28 4.28-3.28zM12 16.7c-1.81 0-3.61-1.39-4.28-3.28l-2.77 2.4C6.23 18.43 8.9 20.2 12 20.2c2.4 0 4.41-.8 6.04-2.18l-2.72-2.12c-.81.54-1.83.8-3.32.8z"/>
-            </svg>
-            Continue with Google
-            </button>
 
-          <div className="flex items-center gap-4 mb-6">
-            <div className="h-[1px] flex-1 bg-zinc-800"></div>
-            <span className="text-[10px] text-zinc-600 font-black uppercase">OR</span>
-            <div className="h-[1px] flex-1 bg-zinc-800"></div>
-          </div>
+            {showSignupLink &&
+              <>
+                <button 
+                onClick={()=>googleLogin()}
+                type="button"
+                className="w-full flex items-center justify-center gap-3 bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-700 font-bold py-3.5 px-4 rounded-xl transition-all mb-6 active:scale-[0.98]"
+                >
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M12.48 10.92v3.28h4.74c-.2 1.06-.9 1.95-1.82 2.56l2.72 2.12c1.6-1.48 2.52-3.66 2.52-6.22 0-.44-.04-.88-.12-1.3l-8.04.56zM6.5 12c0-.62.11-1.22.32-1.78L4.05 7.82C3.39 9.08 3 10.5 3 12c0 1.5.39 2.92 1.05 4.18l2.77-2.4c-.21-.56-.32-1.16-.32-1.78zM12 7.3c1.33 0 2.53.46 3.47 1.37l2.6-2.6C16.5 4.53 14.4 3.5 12 3.5c-3.1 0-5.77 1.77-7.05 4.38l2.77 2.4c.67-1.89 2.47-3.28 4.28-3.28zM12 16.7c-1.81 0-3.61-1.39-4.28-3.28l-2.77 2.4C6.23 18.43 8.9 20.2 12 20.2c2.4 0 4.41-.8 6.04-2.18l-2.72-2.12c-.81.54-1.83.8-3.32.8z"/>
+                </svg>
+                Continue with Google
+                </button>
+
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="h-[1px] flex-1 bg-zinc-800"></div>
+                  <span className="text-[10px] text-zinc-600 font-black uppercase">OR</span>
+                  <div className="h-[1px] flex-1 bg-zinc-800"></div>
+                </div>
+              </>
+            }
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-2">
@@ -128,11 +134,13 @@ const LoginSplit = ({ onLogin, onSignupClick }) => {
                   Forgot password?</button>
               </div>
               <div className="relative">
-                <input type="password" placeholder="Enter your password" 
+                <input type={eyeToggele?"text":"password"} placeholder="Enter your password" 
                 value={formData.password}
                 onChange={(e)=> setFormData({...formData, password:e.target.value})}
                 className="w-full bg-[#0B0E14] border border-zinc-800 rounded-xl py-3 px-4 text-sm text-zinc-300 focus:outline-none focus:border-emerald-500/50 transition-all" />
-                <Eye size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600" />
+                <Eye 
+                onClick={()=>setEyeToggle(!eyeToggele)}
+                size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600" />
               </div>
             </div>
 
@@ -160,9 +168,17 @@ const LoginSplit = ({ onLogin, onSignupClick }) => {
             </div>
           </div>
 
-          <p className="text-center mt-10 text-xs text-zinc-500 font-medium">
-            New to Nexus? <button onClick={onSignupClick} className="text-emerald-500 font-black hover:underline ml-1">Create an account</button>
-          </p>
+          {showSignupLink && (
+              <p className="text-center mt-10 text-xs text-zinc-500 font-medium">
+                New to Nexus? 
+                <button
+                  onClick={onSignupClick}
+                  className="text-emerald-500 font-black hover:underline ml-1"
+                >
+                  Create an account
+                </button>
+              </p>
+          )}
         </div>
         
         <p className="mt-12 text-[10px] text-zinc-700 uppercase font-black tracking-[0.3em]">

@@ -10,7 +10,7 @@ export default function UserModal({ isOpen, onCloseAction, initialData = null })
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
-        roleId: '0'
+        role: ''
     });
 
     useEffect(() => {
@@ -18,10 +18,10 @@ export default function UserModal({ isOpen, onCloseAction, initialData = null })
             setFormData({
                 fullName: initialData.FullName || '',
                 email: initialData.Email || '',
-                roleId: initialData.RoleId || '0'
+                role: initialData.Role || ''
             });
         } else {
-            setFormData({ fullName: '', email: '', roleId: '0' });
+            setFormData({ fullName: '', email: '', role: '' });
         }
     }, [initialData, isOpen]);
 
@@ -34,20 +34,17 @@ export default function UserModal({ isOpen, onCloseAction, initialData = null })
 
         const token = localStorage.getItem('nexus_token');
 
-        // Backend expects integers for RoleId
+        // Backend expects strings for Role
         const payload = {
             fullName: formData.fullName,
             email: formData.email,
-            roleId: parseInt(formData.roleId)
+            role: formData.role
         };
 
         try {
-            // Note: If you don't have an Add User endpoint yet, this POST will fail. 
-            // The provided backend snippet only showed update/delete. 
-            // Assuming /api/register or /api/addUser exists for completeness.
             const endpoint = editMode 
                 ? `http://localhost:3000/api/updateUser/${initialData.UserId}` 
-                : 'http://localhost:3000/api/register'; // Or /api/addUser
+                : 'http://localhost:3000/api/signup';
             
             const method = editMode ? 'PUT' : 'POST';
             
@@ -154,17 +151,16 @@ export default function UserModal({ isOpen, onCloseAction, initialData = null })
                                     <Shield size={12} className="text-emerald-500" /> Security Clearance (Role)
                                 </label>
                                 <select 
-                                    name="roleId" 
-                                    value={formData.roleId}
+                                    name="role" 
+                                    value={formData.role}
                                     onChange={handleChange}
                                     className="w-full bg-[#07090D] border border-zinc-800 rounded-lg py-2 px-3 text-sm text-zinc-200 focus:border-emerald-500/50 outline-none appearance-none cursor-pointer"
                                 >
-                                    <option value="0" disabled>Select Role</option>
-                                    <option value="1">Admin (Level 1)</option>
-                                    <option value="2">Fleet Manager</option>
-                                    <option value="3">Logistics Lead</option>
-                                    <option value="4">Driver</option>
-                                    <option value="5">Warehouse Staff</option>
+                                    <option value="" disabled>Select Role</option>
+                                    <option value="system_admin">System Admin</option>
+                                    <option value="inventory_manager">Inventory Manager</option>
+                                    <option value="logistics_manager">Logistics Manager</option>
+                                    <option value="warehouse_staff">Warehouse Staff</option>
                                 </select>
                             </div>
 
