@@ -1,8 +1,11 @@
 import { Package, TrendingDown, TrendingUp, AlertCircle, Search, Download, Plus, Loader2, MoreVertical, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import InventoryModal from './InventoryModal';
+import {getRoleFromToken} from './getRoleFromToken';
+import csvDownloadHelper from './csvDownloadHelper'
 
 const Inventory = () => {
+  const userRole = getRoleFromToken(localStorage.getItem('nexus_token'));
   const [inventoryData, setInventoryData] = useState([]);
   const [stats, setStats] = useState({ total: 0, low: 0, over: 0, out: 0 }); 
   const [isLoading, setIsLoading] = useState(true);
@@ -108,6 +111,39 @@ const Inventory = () => {
     fetchInventory();    
   };
 
+  const handleExport=async ()=>{
+    const header=["Name","SKU","reorder_level","current_stock","unit_price","Category","Status"];
+    try{
+      const params = new URLSearchParams({
+      page: 1,
+      limit: 100000,
+      search: searchQuery,
+      category: categoryFilter !== "All Categories" ? categoryFilter : "",
+      status: statusFilter !== "All Statuses" ? statusFilter : ""
+    });
+
+      const response = await fetch(`http://localhost:3000/api/inventory?${params}`);
+      const result=await response.json();
+      
+      if(result.status==200){
+        const data=result.data;
+        const rows = data.map(item => [
+          `"${item.name}"`,
+          item.sku,
+          item.reorder_level,
+          item.current_stock,
+          item.unit_price,
+          item.category,
+          item.status
+        ]);
+        csvDownloadHelper(header, rows);
+      }
+
+    }catch(err){
+      console.error("Error in downloading:", err);
+    }
+  }
+
   useEffect(() => {
     toggleMenu();
   }, []);
@@ -124,14 +160,18 @@ const Inventory = () => {
           <p className="text-sm text-zinc-500 mt-1">Monitor and optimize stock levels across warehouses</p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-lg text-sm font-bold transition-all">
+          <button 
+          onClick={()=>handleExport()}
+          className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-lg text-sm font-bold transition-all">
             <Download size={16} /> Export Report
           </button>
-          <button 
-          onClick={()=>setIsOpen(true)}
-          className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-            <Plus size={16} /> Add New SKU
-          </button>
+          {(userRole === 'system_admin' || userRole === 'inventory_manager') &&(
+            <button 
+            onClick={()=>setIsOpen(true)}
+            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+              <Plus size={16} /> Add New SKU
+            </button>
+          )}
         </div>
       </header>
 
@@ -250,6 +290,7 @@ const InvStatCard = ({ icon, label, value, trend, color }) => (
 );
 
 const InventoryRow = ({ item, isOpen, onToggle, onDelete, onUpdate }) => {
+  const userRole = getRoleFromToken(localStorage.getItem('nexus_token'));
   const { product_id, sku, name, category, warehouse_location, current_stock, reorder_level, status, unit_price } = item;
 
   const val = `$${(unit_price || 0).toLocaleString()}`;
@@ -308,12 +349,14 @@ const InventoryRow = ({ item, isOpen, onToggle, onDelete, onUpdate }) => {
               >
                 <Edit size={14} /> Update
               </button>
+              {userRole === 'system_admin' && (
               <button 
                 onClick={() => onDelete(product_id)}
                 className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2"
               >
                 <Trash2 size={14} /> Delete
               </button>
+              )}
             </div>
           )}
         </div>

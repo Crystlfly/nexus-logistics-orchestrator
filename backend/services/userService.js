@@ -7,14 +7,14 @@ const config = dbconfigSetup;
 export async function updateUser(userId, userData) {
     try {
         const pool = await establishConnection(config);
-        const { fullName, email, roleId } = userData;
+        const { fullName, email, role } = userData;
         await pool.request()
             .input('id', sql.UniqueIdentifier, userId)
             .input('fullName', sql.VarChar, fullName)
             .input('email', sql.VarChar, email)
-            .input('roleId', sql.Int, roleId)
+            .input('role', sql.VarChar(50), role)
             .query(`
-                UPDATE Users SET FullName = @fullName, Email = @email, RoleId = @roleId WHERE UserId = @id
+                UPDATE Users SET FullName = @fullName, Email = @email, Role = @role WHERE UserId = @id
             `);
     }   catch (err) {
         throw err;
@@ -24,6 +24,14 @@ export async function updateUser(userId, userData) {
 export async function deleteUser(userId) {
     try{
         const pool = await establishConnection(config);
+        const count = await pool.request()
+            .input('id', sql.UniqueIdentifier, userId)
+            .query(`
+                SELECT COUNT(*) as count FROM Users WHERE UserId = @id AND IsDeleted = 0
+            `);
+        if (count.recordset[0].count === 0) {
+            throw new Error("User not found or already deleted");
+        }
         await pool.request()
             .input('id', sql.UniqueIdentifier, userId)
             .query(`

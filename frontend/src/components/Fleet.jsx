@@ -2,6 +2,7 @@ import React from 'react';
 import { useEffect, useState } from 'react';
 import { Truck, MapPin, Gauge, Fuel, Calendar, Plus, Search, Loader2, MoreVertical, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import FleetModal from './FleetModal';
+import {getRoleFromToken} from './getRoleFromToken';
 
 const Fleet = () => {
   const [fleetData, setFleetData] = useState([]);
@@ -249,7 +250,7 @@ const FleetStat = ({ icon, label, value, trend, color }) => (
 );
 
 const FleetRow = ({ vehicleData, isOpen, onToggle, onDelete, onUpdate }) => {
-  // 1. Destructure everything from the vehicleData object
+  const userRole = getRoleFromToken(localStorage.getItem('nexus_token'));
   const { 
     vehicle_id, 
     vehicle_type, 
@@ -337,12 +338,14 @@ const FleetRow = ({ vehicleData, isOpen, onToggle, onDelete, onUpdate }) => {
               >
                 <Edit size={14} /> Update
               </button>
+              {userRole === 'system_admin' && (
               <button 
                 onClick={() => onDelete(vehicle_id)}
                 className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2"
               >
                 <Trash2 size={14} /> Delete
               </button>
+              )}
             </div>
           )}
         </div>

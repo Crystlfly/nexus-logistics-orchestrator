@@ -10,7 +10,10 @@ import {
   User
 } from "lucide-react";
 
+import {getRoleFromToken} from './getRoleFromToken';
+
 const Dashboard = ({ children, setActiveTab, activeTab, onLogout}) => {
+    const userRole = getRoleFromToken(localStorage.getItem('nexus_token'));
   return (
     <div className="flex w-full min-h-screen bg-[#0B0E14] text-zinc-400 font-sans">
       {/* Sidebar */}
@@ -33,15 +36,19 @@ const Dashboard = ({ children, setActiveTab, activeTab, onLogout}) => {
           <button onClick={() => setActiveTab('inventory')} className="w-full">
             <SideItem icon={<CirclePile size={18}/>} label="Inventory" active={activeTab === 'inventory'} />
           </button>
-          <button onClick={()=> setActiveTab('fleet')} className="w-full">
-            <SideItem icon={<Truck size={18}/>} label="Fleet" active={activeTab === 'fleet'}/>
-          </button>
+          {userRole !== 'inventory_manager' && (
+            <button onClick={()=> setActiveTab('fleet')} className="w-full">
+              <SideItem icon={<Truck size={18}/>} label="Fleet" active={activeTab === 'fleet'}/>
+            </button>
+          )}
           <button onClick={()=> setActiveTab('warehouse')} className="w-full">
             <SideItem icon={<Warehouse size={18}/>} label="Warehouse" active={activeTab === 'warehouse'} />
           </button>
-          <button onClick={()=> setActiveTab('user')} className="w-full">
-            <SideItem icon={<User size={18}/>} label="Users" active={activeTab === 'user'} />
-          </button>
+          {userRole === 'system_admin' && (
+            <button onClick={()=> setActiveTab('user')} className="w-full">
+              <SideItem icon={<User size={18}/>} label="Users" active={activeTab === 'user'} />
+            </button>
+          )}
         </nav>
 
         <div className="p-4 border-t border-zinc-800">
