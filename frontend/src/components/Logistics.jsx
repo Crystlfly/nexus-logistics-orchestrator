@@ -17,22 +17,46 @@ const Logistics = () => {
   const [logisticData, setLogicticData]= useState([]);
   const [isLoading, setIsLoading]= useState(true);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0); 
+  const [searchQueryLogistic, setSearchQueryLogistic] = useState("");
+  const [statusFilterLogistic, setStatusFilterLogistic] = useState("");
+  const [vehicleFilterLogistic, setVehicleFilterLogistic] = useState("");
+  const itemsPerPage = 10;
+
   useEffect(()=>{
     const fetchLogistics=async()=>{
      try{
-       const response=await fetch('http://localhost:3000/api/logistics')
+        const params = new URLSearchParams({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchQueryLogistic,
+          status: statusFilterLogistic,
+          vehicle: vehicleFilterLogistic
+        });
+        const response=await fetch(`http://localhost:3000/api/logistics?${params}`)
+       if(!response.ok){
+        setLogicticData([]);
+       }
         const data =await response.json();
-        if(data.status===200){
-          setLogicticData(data.data);
-        }
+        setLogicticData(data.data || []);
+        setTotalPages(data?.totalPages || 0);
      }catch(err){
         console.error("Logistics API Error:",err);
+        setLogicticData([]);
      }finally{
         setIsLoading(false);
      }
     }
-    fetchLogistics();
-  }, []);
+    const timer = setTimeout(() => {
+        fetchLogistics();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [currentPage, searchQueryLogistic, statusFilterLogistic, vehicleFilterLogistic]);
+
+  useEffect(() => {
+      setCurrentPage(1);
+  }, [searchQueryLogistic, statusFilterLogistic, vehicleFilterLogistic]);
 
   if (isLoading) return <div className="min-h-screen bg-[#0B0E14] flex items-center justify-center text-zinc-500"><Loader2 className="animate-spin mr-2" /> Loading...</div>;
   
@@ -67,15 +91,20 @@ const Logistics = () => {
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"><Search size={16} /></span>
           <input 
             type="text" 
+            value={searchQueryLogistic}
+            onChange={(e) => setSearchQueryLogistic(e.target.value)}
             placeholder="Search shipments by ID, origin, or destination..." 
             className="w-full bg-[#0B0E14] border border-zinc-800 rounded-lg py-2 pl-10 pr-4 text-sm text-zinc-300 focus:outline-none focus:border-emerald-500/50"
           />
         </div>
-        <select className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-300 outline-none">
-          <option>All Statuses</option>
-          <option>In Transit</option>
-          <option>Delayed</option>
-          <option>Delivered</option>
+        <select 
+        value={statusFilterLogistic}
+        onChange={(e) => setStatusFilterLogistic(e.target.value)}
+        className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-300 outline-none">
+          <option value="">All Statuses</option>
+          <option value="Dispatched">In Transit</option>
+          <option value="Delayed">Delayed</option>
+          <option value="Delivered">Delivered</option>
         </select>
       </div>
 
