@@ -4,12 +4,14 @@ import {
   Search, Download, Plus, MapPin, 
   Anchor, Truck, Package, Loader2, MoreVertical, ChevronLeft, ChevronRight, Edit, Trash2
 } from 'lucide-react';
+import { getRoleFromToken } from './getRoleFromToken';
 
 // IMPORT SUB-COMPONENTS
 import WarehouseModal from './WarehouseModal'; // You said you have this
 import Zones from './Zones'; // The file we just created
 
 const WarehouseManagement = () => {
+  const userRole = getRoleFromToken(localStorage.getItem('nexus_token'));
   // --- STATE: WAREHOUSES ---
   const [warehouseData, setWarehouseData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -124,9 +126,11 @@ const WarehouseManagement = () => {
           <button className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 text-zinc-400 px-4 py-2 rounded-lg text-sm font-bold hover:bg-zinc-800 transition-all">
             <Download size={16} /> Export CSV
           </button>
-          <button onClick={()=>setIsOpen(true)} className="flex items-center gap-2 bg-emerald-500 text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-400 transition-all">
-            <Plus size={16} /> Add Facility
-          </button>
+          {(userRole === 'system_admin' || userRole === 'warehouse_staff') && (
+            <button onClick={()=>setIsOpen(true)} className="flex items-center gap-2 bg-emerald-500 text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-400 transition-all">
+              <Plus size={16} /> Add Facility
+            </button>
+          )}
         </div>
       </header>
 
@@ -135,8 +139,10 @@ const WarehouseManagement = () => {
         <MetricCard icon={<Home />} label="Total Warehouses" value={warehouseData.length} sub={`${metrics.active} Active`} color="emerald" />
         <MetricCard icon={<Activity />} label="Global Utilization" value={`${metrics.util}%`} sub={`${(metrics.usedCap/1000).toFixed(1)}k / ${(metrics.totalCap/1000).toFixed(1)}k sqft`} color="blue" />
         <MetricCard icon={<Users />} label="Total Staff" value={metrics.staff} sub="Across all sites" color="purple" />
-        <MetricCard icon={<DollarSign />} label="Daily Ops Cost" value={`$${metrics.cost.toLocaleString()}`} sub="Total daily burn rate" color="orange" />
-      </div>
+        {userRole === 'system_admin' && (
+          <MetricCard icon={<DollarSign />} label="Daily Ops Cost" value={`$${metrics.cost.toLocaleString()}`} sub="Total daily burn rate" color="orange" />
+        )}
+        </div>
 
       {/* Filters */}
       <div className="flex gap-4 mb-6">
@@ -229,6 +235,7 @@ const WarehouseRow = ({ data, isOpen, onToggle, onDelete, onUpdate }) => {
     if(type === 'Distribution') return <Truck size={12} />;
     return <Package size={12} />;
   };
+  const userRole = getRoleFromToken(localStorage.getItem('nexus_token'));
   return (
     <tr className="hover:bg-white/[0.02] transition-colors group">
       <td className="p-4">
@@ -288,9 +295,11 @@ const WarehouseRow = ({ data, isOpen, onToggle, onDelete, onUpdate }) => {
               <button onClick={() => onUpdate(data)} className="w-full text-left px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white flex items-center gap-2">
                 <Edit size={14} /> Update
               </button>
-              <button onClick={() => onDelete(data.id)} className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2">
-                <Trash2 size={14} /> Delete
-              </button>
+              {userRole === 'system_admin' && (
+                <button onClick={() => onDelete(data.id)} className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2">
+                  <Trash2 size={14} /> Delete
+                </button>
+              )}
             </div>
           )}
         </div>

@@ -33,7 +33,7 @@ router.get("/api/users", async (req, res) => {
         }
         
         const query = `
-            SELECT UserId, FullName, Email, RoleId FROM Users ${whereClause} AND IsDeleted = 0
+            SELECT UserId, FullName, Email, Role FROM Users ${whereClause} AND IsDeleted = 0
             ORDER BY UserId OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
         `;
         const request = createRequest();
@@ -52,6 +52,9 @@ router.put('/api/updateUser/:id', authenticateToken, async (req, res) => {
     const userId = req.params.id;
     const userData = req.body;
     try {
+        if (req.user.role !== 'system_admin') {
+            return res.status(403).json({ message: "Access Denied. Your are not authorized for this request." });
+        }
         await updateUser(userId, userData);
         res.json({ status: 200, message: "User updated successfully" });
     } catch (err) {
@@ -63,6 +66,14 @@ router.put('/api/updateUser/:id', authenticateToken, async (req, res) => {
 router.delete('/api/deleteUser/:id', authenticateToken, async (req, res) => {
     const userId = req.params.id;
     try {
+        if (req.user.role !== 'system_admin') {
+            return res.status(403).json({ message: "Access Denied. Your are not authorized for this request." });
+        }
+        else if(req.user.id == userId){
+            return res.status(403).json({ message: "Access Denied. You cannot delete your own account." });
+        }
+        console.log("Deleting user with ID:", userId);
+        console.log("Request made by user:", req.user.id);
         await deleteUser(userId);
         res.json({ status: 200, message: "User deleted successfully" });
     } catch (err) {

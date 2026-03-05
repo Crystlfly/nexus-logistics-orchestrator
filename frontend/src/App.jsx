@@ -12,6 +12,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import ResetPasswordPage from './components/ResetPassword.jsx';
 import { jwtDecode } from 'jwt-decode';
 import OrderModal from './components/OrderModal.jsx';
+import {getRoleFromToken} from './components/getRoleFromToken';
 
 import { useState, useEffect } from 'react';
 import {
@@ -28,6 +29,7 @@ import {
 //   { lat: 40.7128, lng: -74.0060, name: "New York Hub", status: "Active" },
 //   { lat: 34.0522, lng: -118.2437, name: "LA Warehouse", status: "Active" },
 // ];
+
 
 
 function App() {
@@ -53,6 +55,9 @@ function App() {
       return false;
     }
   });
+
+  const userRole = getRoleFromToken(localStorage.getItem('nexus_token'));
+
   const [WAREHOUSE_POINTS, setWAREHOUSE_POINTS] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -165,7 +170,7 @@ function App() {
       {activeTab === 'inventory' && <Inventory />}
       {activeTab === 'fleet' && <Fleet />}
       {activeTab === 'warehouse' && <WarehouseManagement />}
-      {activeTab === 'user' && <User />}
+      {activeTab === 'user' && userRole === 'system_admin' && <User />}
     </Dashboard>
     )
     } />

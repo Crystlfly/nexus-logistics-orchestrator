@@ -1,15 +1,17 @@
-import { Users as UsersIcon, Shield, UserCheck, UserX, Search, Download, Plus, Loader2, MoreVertical, ChevronLeft, ChevronRight, Edit, Trash2, Mail, Lock } from 'lucide-react';
+import { Users as UsersIcon, Shield, UserCheck, Package, Search, Download, Plus, Loader2, MoreVertical, ChevronLeft, ChevronRight, Edit, Trash2, Mail, Lock } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import UserModal from './UserModal';
+import csvDownloadHelper from './csvDownloadHelper'
+
 
 // Role Mapping for Visuals
 const ROLE_MAP = {
-  1: { label: 'Admin', color: 'purple' },
-  2: { label: 'Fleet Manager', color: 'blue' },
-  3: { label: 'Logistics Lead', color: 'emerald' },
-  4: { label: 'Driver', color: 'orange' },
-  0: { label: 'User', color: 'zinc' }
+  system_admin: { label: "System Admin", color: "purple" },
+  inventory_manager: { label: "Inventory Manager", color: "blue" },
+  logistics_manager: { label: "Logistics Manager", color: "emerald" },
+  warehouse_staff: { label: "Warehouse Staff", color: "zinc" },
 };
+
 
 const Users = () => {
   const [usersData, setUsersData] = useState([]);
@@ -52,10 +54,10 @@ const Users = () => {
         setUsersData(data);
         // Calculate mock stats if backend doesn't provide them
         setStats({
-          total: 128, // Mock or total count from headers if available
+          total: data.length, // Mock or total count from headers if available
           active: data.length,
-          admins: data.filter(u => u.RoleId === 1).length,
-          suspended: 2
+          admins: data.filter(u => u.Role === "system_admin").length,
+          opCost: data.filter(u => u.Role === "warehouse_staff").length,
         });
       } else {
         // If backend matches Inventory structure
@@ -90,7 +92,10 @@ const Users = () => {
 
         if (response.ok) {
           fetchUsers(); 
-        } else {
+        } else if (response.status === 403) {
+          alert('You do not have permission to delete yourself user.');
+        }
+        else {
           alert('Failed to delete user');
         }
       } catch (err) {
@@ -110,6 +115,40 @@ const Users = () => {
     fetchUsers();    
   };
 
+  const handleExport=async ()=>{
+    const token=localStorage.getItem("nexus_token");
+    const header=["FullName", "Email", "Role"];
+    try{
+      const params = new URLSearchParams({
+      page: 1,
+      limit: 100000,
+      search: searchQuery,
+      category: roleFilter !== "All Roles" ? roleFilter : ""
+    });
+
+      const response = await fetch(`http://localhost:3000/api/users?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data=await response.json();
+      
+      if (Array.isArray(data) && data.length > 0) {
+      // Map the SQL columns (FullName, Email, Role) to CSV rows
+      const rows = data.map(user => [
+        `"${user.FullName || 'N/A'}"`, 
+        user.Email || 'N/A',
+        ROLE_MAP[user.Role]?.label || user.Role || 'N/A'
+      ]);
+      
+      // Execute download
+      csvDownloadHelper(header, rows);
+    } else {
+      alert("No users found to export.");
+    }
+  }catch(err){
+      console.error("Error in downloading:", err);
+    }
+  }
+
   if (isLoading && currentPage === 1 && usersData.length === 0) {
     return <div className="min-h-screen bg-[#0B0E14] flex items-center justify-center text-zinc-500">
       <Loader2 className="animate-spin mr-2" /> Loading Nexus Protocol...
@@ -124,7 +163,9 @@ const Users = () => {
           <p className="text-sm text-zinc-500 mt-1">Control access permissions and personnel roles</p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-lg text-sm font-bold transition-all">
+          <button 
+          onClick={()=>handleExport()}
+          className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-lg text-sm font-bold transition-all">
             <Download size={16} /> Export List
           </button>
           <button 
@@ -142,7 +183,7 @@ const Users = () => {
         <UserStatCard icon={<UsersIcon />} label="Total Users" value={stats.total} trend="+12" color="blue" />
         <UserStatCard icon={<UserCheck />} label="Active Now" value={stats.active} trend="+4" color="emerald" />
         <UserStatCard icon={<Shield />} label="Administrators" value={stats.admins} trend="0" color="purple" />
-        <UserStatCard icon={<UserX />} label="Suspended" value={stats.suspended} trend="-1" color="rose" />
+        <UserStatCard icon={<Package />} label="Operational Cost" value={stats.opCost} trend="-1" color="rose" />
       </div>
 
       {/* Search & Filters */}
@@ -162,10 +203,10 @@ const Users = () => {
         onChange={(e) => setRoleFilter(e.target.value)}
         className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-300 outline-none">
           <option>All Roles</option>
-          <option value="1">Admin</option>
-          <option value="2">Fleet Manager</option>
-          <option value="3">Logistics Lead</option>
-          <option value="4">Driver</option>
+          <option value="system_admin">Admin</option>
+          <option value="inventory_manager">Inventory Manager</option>
+          <option value="logistics_manager">Logistics Manager</option>
+          <option value="warehouse_staff">Warehouse Staff</option>
         </select>
       </div>
 
@@ -252,11 +293,11 @@ const UserStatCard = ({ icon, label, value, trend, color }) => {
 };
 
 const UserRow = ({ user, isOpen, onToggle, onDelete, onUpdate }) => {
-  const { UserId, FullName, Email, RoleId } = user;
-  const roleConfig = ROLE_MAP[RoleId] || ROLE_MAP[0];
+  const { UserId, FullName, Email, Role } = user;
+  const roleConfig = ROLE_MAP[Role ?? "warehouse_staff"];
   
   // Mock status based on randomness or logic since API doesn't return it
-  const isOnline = UserId % 3 !== 0; 
+  const isOnline = Math.random() > 0.5;
 
   const getRoleBadge = (color) => {
     const colors = {
