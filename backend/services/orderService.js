@@ -8,11 +8,11 @@ export async function createOrder(orderData, authenticatedUsername) {
     if (!authenticatedUsername) {
         throw new Error("Cannot create order: User is not authenticated.");
     }
-    const { itemid, quantity, date, priorityLvl, dest, warehouseId } = orderData;
+    const { itemid, quantity, date, priorityLvl, dest } = orderData;
     
     const pool = await establishConnection(config);
     const transaction = new sql.Transaction(pool);
-    const priorityMap = { 'Normal':1, 'Low': 2, 'Medium': 3 };
+    const priorityMap = { 'Low':1, 'Normal': 2, 'High': 3 };
     const priorityValue = priorityMap[priorityLvl] || 1;
     
     // Flag to track if transaction is active
@@ -24,60 +24,77 @@ export async function createOrder(orderData, authenticatedUsername) {
 
         const request = new sql.Request(transaction); // Use the same request object for efficiency
 
-        // 1. CHECK STOCK
-        const stockCheck = await request
+        // 1. Current stock and warehouse_id fetch
+        let cData = await request
             .input('itemid', sql.Int, itemid)
-            .query('SELECT current_stock FROM Products WHERE product_id = @itemid');
+            .query('SELECT current_stock, warehouse_id, zone_id, per_volume FROM Products WHERE product_id = @itemid AND IsDeleted=0');
             
         // Use optional chaining and nullish coalescing safely
-        const stock = stockCheck.recordset[0]?.current_stock;
+        cData= cData.recordset[0];
+        const stock = cData.current_stock;
         
         if (stock === undefined) throw new Error("Product not found.");
         if (stock < quantity) throw new Error(`Insufficient stock. Only ${stock} available.`);
 
         // 2. FIND TRUCK
-        const fleetCheck = await request
-            .input('warehouseId', sql.Int, warehouseId)
-            .query(`SELECT TOP 1 vehicle_id FROM Fleet WHERE current_warehouse_id = @warehouseId AND status = 'Idle'`);
+        // const fleetCheck = await request
+        //     .input('warehouseId', sql.Int, cData.warehouseId)
+        //     .query(`SELECT TOP 1 vehicle_id FROM Fleet WHERE current_warehouse_id = @warehouseId AND status = 'Idle'`);
 
-        let assignedTruckId = null;
-        let finalStatus = 'Pending';
+        // let assignedTruckId = null;
+        // let finalStatus = 'Pending';
 
-        if (fleetCheck.recordset.length > 0) {
-            assignedTruckId = fleetCheck.recordset[0].vehicle_id;
-            finalStatus = 'Dispatched';
+        // if (fleetCheck.recordset.length > 0) {
+        //     assignedTruckId = fleetCheck.recordset[0].vehicle_id;
+        //     finalStatus = 'Dispatched';
 
-            await request
-                .input('truckId', sql.Int, assignedTruckId)
-                .input('dest_update', sql.VarChar, dest)
-                .query(`UPDATE Fleet SET status = 'In-Transit', current_route = @dest_update WHERE vehicle_id = @truckId`);
-        }
+        //     await request
+        //         .input('truckId', sql.Int, assignedTruckId)
+        //         .input('dest_update', sql.VarChar, dest)
+        //         .query(`UPDATE Fleet SET status = 'In-Transit', current_route = @dest_update WHERE vehicle_id = @truckId`);
+        // }
 
         // 3. DEDUCT STOCK
-        await request
+        const stockUpdateResult =new sql.Request(transaction);
+        await stockUpdateResult
             .input('qty_deduct', sql.Int, quantity)
+            .input('itemid', sql.Int, itemid)
             .query('UPDATE Products SET current_stock = current_stock - @qty_deduct WHERE product_id = @itemid');
+        
+        //4. reduce the occupied capacity in the zone and warehouse
+        const reqWhUpdate = new sql.Request(transaction);
+        await reqWhUpdate
+            .input('warehouseId', sql.Int, cData.warehouse_id)
+            .input('orderedVolume', sql.Int,cData.per_volume*quantity)
+            .query(`update warehouses set used_capacity_sqft=used_capacity_sqft-@orderedVolume WHERE warehouse_id = @warehouseId`);
 
+        const reqZoneUpdate = new sql.Request(transaction);
+        await reqZoneUpdate
+            .input('zoneId', sql.Int, cData.zone_id)
+            .input('orderedVolumeZone', sql.Int,cData.per_volume*quantity)
+            .query(`update zones set current_occupancy=current_occupancy-@orderedVolumeZone WHERE zone_id = @zoneId`);
         // 4. CREATE ORDER
-        await request
+
+        const orderInsertResult =new sql.Request(transaction);
+        await orderInsertResult
             .input('username', sql.VarChar, authenticatedUsername)
             .input('order_qty', sql.Int, quantity)
             .input('order_date', sql.DateTime, date)
             .input('priority', sql.Int, priorityValue)
-            .input('status_str', sql.VarChar, finalStatus)
+            .input('status_str', sql.VarChar, 'Pending')
             .input('dest_addr', sql.VarChar, dest)
-            .input('wh_id', sql.Int, warehouseId)
-            .input('assigned_v_id', sql.Int, assignedTruckId)
+            .input('wh_id', sql.Int, cData.warehouse_id)
+            .input('itemid', sql.Int, itemid)
             .query(`
                 INSERT INTO Orders (
                     customer_name, product_id, quantity, order_date, 
                     priority_level, order_status, destination_address, 
-                    warehouse_id, assigned_vehicle_id
+                    warehouse_id
                 ) 
                 VALUES (
                     @username, @itemid, @order_qty, @order_date, 
                     @priority, @status_str, @dest_addr, 
-                    @wh_id, @assigned_v_id
+                    @wh_id
                 )
             `);
 
@@ -85,9 +102,7 @@ export async function createOrder(orderData, authenticatedUsername) {
         
         return {
             success: true,
-            message: finalStatus === 'Dispatched' 
-                ? `Order Dispatched! Truck #${assignedTruckId} assigned.` 
-                : `Order Pending. Stock reserved, but no trucks available.`
+            message: 'Order Placed Successfully!' 
         };
 
     } catch (err) {

@@ -45,6 +45,11 @@ const Users = () => {
       const response = await fetch(`http://localhost:3000/api/users?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+
+      if (!response.ok) {
+        setUsersData([]); // Force it to be an empty array
+        return;
+      }
       
       const data = await response.json();
 
@@ -60,12 +65,14 @@ const Users = () => {
           opCost: data.filter(u => u.Role === "warehouse_staff").length,
         });
       } else {
-        // If backend matches Inventory structure
-        setUsersData(data.data || data); 
+        const extractedData = data.data || data;
+        setUsersData(Array.isArray(extractedData) ? extractedData : []);
+        // setUsersData(data.data || data); 
       }
 
     } catch (err) {
       console.error("User API Error:", err);
+      setUsersData([]);
     } finally {
       setIsLoading(false);
     }
@@ -133,7 +140,7 @@ const Users = () => {
       
       if (Array.isArray(data) && data.length > 0) {
       // Map the SQL columns (FullName, Email, Role) to CSV rows
-      const rows = data.map(user => [
+      const rows = data?.map(user => [
         `"${user.FullName || 'N/A'}"`, 
         user.Email || 'N/A',
         ROLE_MAP[user.Role]?.label || user.Role || 'N/A'
@@ -227,7 +234,7 @@ const Users = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-800/50">
-            {usersData.map((user) => (
+            {usersData?.map((user) => (
               <UserRow 
                 key={user.UserId}
                 user={user}

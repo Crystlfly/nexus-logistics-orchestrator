@@ -229,7 +229,8 @@ const Inventory = () => {
               <th className="px-6 py-4">SKU</th>
               <th className="px-6 py-4">Product Name</th>
               <th className="px-6 py-4">Category</th>
-              <th className="px-6 py-4">Warehouse</th>
+              <th className="px-6 py-4">Warehouse ID</th>
+              <th className="px-6 py-4">Zone ID</th>
               <th className="px-6 py-4">Current / Optimal</th>
               <th className="px-6 py-4">Stock Level</th>
               <th className="px-6 py-4">Status</th>
@@ -291,7 +292,7 @@ const InvStatCard = ({ icon, label, value, trend, color }) => (
 
 const InventoryRow = ({ item, isOpen, onToggle, onDelete, onUpdate }) => {
   const userRole = getRoleFromToken(localStorage.getItem('nexus_token'));
-  const { product_id, sku, name, category, warehouse_location, current_stock, reorder_level, status, unit_price } = item;
+  const { product_id, sku, name, category, current_stock, reorder_level, status, unit_price, warehouse_id, zone_id } = item;
 
   const val = `$${(unit_price || 0).toLocaleString()}`;
   
@@ -307,7 +308,8 @@ const InventoryRow = ({ item, isOpen, onToggle, onDelete, onUpdate }) => {
     <td className="px-6 py-4 text-xs font-mono font-bold text-emerald-500/80">{sku}</td>
     <td className="px-6 py-4 text-xs font-bold text-white">{name}</td>
     <td className="px-6 py-4 text-[11px] text-zinc-500">{category}</td>
-    <td className="px-6 py-4 text-[11px] text-zinc-400 font-medium">{warehouse_location}</td>
+    <td className="px-6 py-4 text-[11px] text-zinc-400 font-medium">{warehouse_id}</td>
+    <td className="px-6 py-4 text-[11px] text-zinc-400 font-medium">{zone_id}</td>
     <td className="px-6 py-4 text-xs font-bold text-zinc-300">
       {current_stock} <span className="text-zinc-600 font-normal">/ {reorder_level}</span>
     </td>

@@ -145,7 +145,7 @@ const WarehouseManagement = () => {
         </div>
 
       {/* Filters */}
-      <div className="flex gap-4 mb-6">
+      <div className="flex gap-4 bg-[#0F1219] p-4 rounded-xl border border-zinc-800 mb-6">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
           <input type="text" value={searchQueryWarehouse} onChange={(e) => setSearchQueryWarehouse(e.target.value)} placeholder="Search..." className="w-full bg-[#0F1219] border border-zinc-800 rounded-lg py-2.5 pl-10 pr-4 text-sm focus:border-emerald-500/50 outline-none text-white" />
@@ -157,6 +157,7 @@ const WarehouseManagement = () => {
           <option>Fulfilment</option>
         </select>
       </div>
+      
 
       {/* Main Table */}
       <div className="bg-[#0F1219] border border-zinc-800 rounded-xl overflow-hidden shadow-xl mb-6">

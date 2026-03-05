@@ -14,7 +14,8 @@ export default function InventoryModal({isOpen, onCloseAction, initialToBeUpdate
         currentStock: '',
         unitPrice: '',
         category: '',
-        status: ''
+        status: '',
+        volume:''
     });
 
     
@@ -27,7 +28,8 @@ export default function InventoryModal({isOpen, onCloseAction, initialToBeUpdate
                 currentStock: initialToBeUpdatedData.current_stock || '',
                 unitPrice: initialToBeUpdatedData.unit_price || '',
                 category: initialToBeUpdatedData.category || '',
-                status: initialToBeUpdatedData.status || ''
+                status: initialToBeUpdatedData.status || '',
+                volume: initialToBeUpdatedData.volume || ''
             });
         }
         else{
@@ -38,7 +40,8 @@ export default function InventoryModal({isOpen, onCloseAction, initialToBeUpdate
                 currentStock: '',
                 unitPrice: '',
                 category: '',
-                status: ''
+                status: '',
+                volume: ''
             });
         }
     }, [initialToBeUpdatedData, isOpen]);
@@ -57,6 +60,12 @@ export default function InventoryModal({isOpen, onCloseAction, initialToBeUpdate
             sku: formData.sku,
             category: formData.category,
             status: formData.status,
+            volume: formData.volume,
+            currentStock: formData.currentStock,
+            reorderLevel: formData.reorderLevel,
+            unitPrice: formData.unitPrice,
+
+
             
             reorder_level: parseInt(formData.reorderLevel) || 0,
             current_stock: parseInt(formData.currentStock) || 0,
@@ -166,8 +175,8 @@ export default function InventoryModal({isOpen, onCloseAction, initialToBeUpdate
                                 </div>
                             </div>
 
-                            {/* --- 2. Category & Status --- */}
-                            <div className="grid grid-cols-2 gap-4 mb-2">
+                            {/* --- 2. Category & Status & volume --- */}
+                            <div className="grid grid-cols-3 gap-4 mb-2">
                                 <div>
                                     <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 uppercase mb-1.5">
                                         <Tag size={12} className="text-emerald-500" /> Category
@@ -201,6 +210,19 @@ export default function InventoryModal({isOpen, onCloseAction, initialToBeUpdate
                                         <option value="Out of Stock">Out of Stock</option>
                                         <option value="Discontinued">Discontinued</option>
                                     </select>
+                                </div>
+                                <div>
+                                    <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 uppercase mb-1.5">
+                                        <Box size={12} className="text-emerald-500" /> Volume per item
+                                    </label>
+                                    <input 
+                                        name="volume" 
+                                        type="number"
+                                        value={formData.volume}
+                                        onChange={handleChange} 
+                                        className="w-full bg-[#07090D] border border-zinc-800 rounded-lg py-2 px-3 text-sm text-zinc-200 focus:border-emerald-500/50 outline-none transition-all placeholder:text-zinc-700" 
+                                        placeholder="5 sqft" 
+                                    />
                                 </div>
                             </div>
 

@@ -25,7 +25,7 @@ const RealMap = ({ points }) => {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
       />
       
-      {points.map((point, idx) => (
+      {points?.map((point, idx) => (
         <Marker key={idx} position={[point.latitude, point.longitude]}>
           <Popup>
             <div className="text-zinc-900 font-sans">
