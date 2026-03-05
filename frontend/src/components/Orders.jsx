@@ -1,0 +1,357 @@
+import React, { useState, useEffect} from 'react';
+import {
+  ShoppingCart,
+  Clock,
+  CheckCircle,
+  DollarSign,
+  Search,
+  Download,
+  Eye,
+  Box,
+  User,
+  MapPin,
+  X,
+  FileText,
+  Truck,
+  ChevronLeft,
+  ChevronRight
+} from "lucide-react";
+
+// Extended sample data to match the visual design
+// const rawOrdersData = [
+//   { order_id: 8392, customer_name: 'TechCorp Industries', product_name: 'Industrial Bearings (Pack of 500)', quantity: 500, value: '$24,500', order_date: '2026-02-20T14:32:00', priority_level: 3, order_status: 'Delivered', destination_address: 'Austin, TX', warehouse_name: 'Dallas Distribution Center', assigned_vehicle_id: 9281 },
+//   { order_id: 8391, customer_name: 'MedSupply Corp', product_name: 'Medical Supply Package', quantity: 1200, value: '$67,800', order_date: '2026-02-20T13:15:00', priority_level: 2, order_status: 'Shipped', destination_address: 'Miami, FL', warehouse_name: 'Miami Port', assigned_vehicle_id: 8832 },
+//   { order_id: 8390, customer_name: 'AutoParts Direct', product_name: 'Automotive Parts Assembly', quantity: 350, value: '$89,200', order_date: '2026-02-20T12:48:00', priority_level: 1, order_status: 'Processing', destination_address: 'Detroit, MI', warehouse_name: 'Chicago Central', assigned_vehicle_id: null },
+//   { order_id: 8389, customer_name: 'Construction Pro LLC', product_name: 'Construction Materials Bundle', quantity: 2500, value: '$156,000', order_date: '2026-02-20T11:22:00', priority_level: 3, order_status: 'Shipped', destination_address: 'San Diego, CA', warehouse_name: 'LA Distribution', assigned_vehicle_id: 7731 },
+// ];
+
+export default function OrderManagement() {
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [rawOrdersData, setRawOrdersData] = useState([]);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0); 
+  const [searchQueryOrder, setSearchQueryOrder] = useState("");
+  const [statusFilterOrder, setStatusFilterOrder] = useState("");
+  const [priorityFilterOrder, setPriorityFilterOrder] = useState("");
+  const itemsPerPage = 10;
+
+  useEffect(()=>{
+    const fetchOrders = async () => {
+      try {
+        const params = new URLSearchParams({
+          page: currentPage,
+          limit: itemsPerPage,
+          search: searchQueryOrder,
+          status: statusFilterOrder ,
+          priority: priorityFilterOrder
+        });
+
+        const response = await fetch(`http://localhost:3000/api/orders?${params}`);
+        if(!response.ok){
+          setRawOrdersData([]);
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data= await response.json();
+
+        setRawOrdersData(data?.data || []);
+        setTotalPages(data?.pagination.totalPages || 0);
+
+      } catch (error) {
+        console.error("Failed to fetch orders:", error);
+        setRawOrdersData([]);
+      }
+    }
+    const timer = setTimeout(() => {
+        fetchOrders();
+    }, 500);
+    return () => clearTimeout(timer);
+  },[currentPage, searchQueryOrder, statusFilterOrder, priorityFilterOrder]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQueryOrder, statusFilterOrder, priorityFilterOrder]);
+   
+
+
+  // Helper function to format priority tags matching the new aesthetic
+  const getPriorityBadge = (level) => {
+    switch(level) {
+      case 1: return <span className="bg-rose-500/10 text-rose-500 px-2 py-1 rounded text-[10px] font-bold border border-rose-500/20 uppercase tracking-widest">Low</span>;
+      case 2: return <span className="bg-orange-500/10 text-orange-500 px-2 py-1 rounded text-[10px] font-bold border border-orange-500/20 uppercase tracking-widest">Normal</span>;
+      case 3: return <span className="bg-blue-500/10 text-blue-500 px-2 py-1 rounded text-[10px] font-bold border border-blue-500/20 uppercase tracking-widest">High</span>;
+      default: return <span className="bg-zinc-800 text-zinc-400 px-2 py-1 rounded text-[10px] font-bold border border-zinc-700 uppercase tracking-widest">Unset</span>;
+    }
+  };
+
+  // Helper function to format status tags matching Logistics logic
+  const getStatusBadge = (status) => {
+    let color = '';
+    if (status === 'Processing' || status === 'Pending') color = 'text-orange-500 bg-orange-500/10 border-orange-500';
+    else if (status === 'Shipped' || status === 'Dispatched') color = 'text-blue-500 bg-blue-500/10 border-blue-500';
+    else if (status === 'Delivered') color = 'text-emerald-500 bg-emerald-500/10 border-emerald-500';
+    else color = 'text-zinc-500 bg-zinc-500/10 border-zinc-500';
+
+    return <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-current ${color}`}>{status}</span>;
+  };
+
+  return (
+    <div className="space-y-6">
+      
+      {/* Header section */}
+      <header className="my-5 flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl font-black text-white tracking-tight">Order Management</h1>
+          <p className="text-sm text-zinc-500 mt-1">Track and manage all customer orders across the supply chain</p>
+        </div>
+        <div className="flex gap-3">
+          <button className="flex items-center gap-2 bg-transparent border border-zinc-800 hover:bg-zinc-800 text-zinc-300 px-4 py-2 rounded-lg text-sm font-bold transition-all">
+            <Download size={16} /> Export Orders
+          </button>
+          <button className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-lg text-sm font-bold transition-all">
+            <ShoppingCart size={16} /> New Order
+          </button>
+        </div>
+      </header>
+
+      {/* KPI Cards Section */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Total Orders */}
+        <div className="bg-[#0F1219] border border-zinc-800 p-5 rounded-xl">
+          <div className="flex justify-between items-start mb-4">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-500/10 text-blue-500">
+              <ShoppingCart size={20} />
+            </div>
+            <span className="text-[10px] font-bold text-emerald-500">+8.2%</span>
+          </div>
+          <p className="text-[11px] text-zinc-500 uppercase font-bold tracking-tight">Total Orders</p>
+          <div className="flex items-end gap-2 mt-1">
+            <h3 className="text-2xl font-bold text-white">12</h3>
+            <span className="text-[10px] text-zinc-600 font-bold mb-1">Last 7 days</span>
+          </div>
+        </div>
+
+        {/* Pending Processing */}
+        <div className="bg-[#0F1219] border border-zinc-800 p-5 rounded-xl">
+          <div className="flex justify-between items-start mb-4">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-orange-500/10 text-orange-500">
+              <Clock size={20} />
+            </div>
+            <span className="text-[10px] font-bold text-orange-500">4 active</span>
+          </div>
+          <p className="text-[11px] text-zinc-500 uppercase font-bold tracking-tight">Pending Processing</p>
+          <div className="flex items-end gap-2 mt-1">
+            <h3 className="text-2xl font-bold text-white">4</h3>
+            <span className="text-[10px] text-zinc-600 font-bold mb-1">Requires attention</span>
+          </div>
+        </div>
+
+        {/* Successfully Delivered */}
+        <div className="bg-[#0F1219] border border-zinc-800 p-5 rounded-xl">
+          <div className="flex justify-between items-start mb-4">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-500/10 text-emerald-500">
+              <CheckCircle size={20} />
+            </div>
+            <span className="text-[10px] font-bold text-emerald-500">33%</span>
+          </div>
+          <p className="text-[11px] text-zinc-500 uppercase font-bold tracking-tight">Successfully Delivered</p>
+          <div className="flex items-end gap-2 mt-1">
+            <h3 className="text-2xl font-bold text-white">4</h3>
+            <span className="text-[10px] text-zinc-600 font-bold mb-1">This week</span>
+          </div>
+        </div>
+
+        {/* Total Revenue */}
+        <div className="bg-[#0F1219] border border-zinc-800 p-5 rounded-xl">
+          <div className="flex justify-between items-start mb-4">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-purple-500/10 text-purple-500">
+              <DollarSign size={20} />
+            </div>
+            <span className="text-[10px] font-bold text-emerald-500">+12.4%</span>
+          </div>
+          <p className="text-[11px] text-zinc-500 uppercase font-bold tracking-tight">Total Revenue</p>
+          <div className="flex items-end gap-2 mt-1">
+            <h3 className="text-2xl font-bold text-white">$773K</h3>
+            <span className="text-[10px] text-zinc-600 font-bold mb-1">From active</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex gap-4 bg-[#0F1219] p-4 rounded-xl border border-zinc-800">
+        <div className="flex-1 relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"><Search size={16} /></span>
+          <input 
+            type="text" 
+            value={searchQueryOrder}
+            onChange={(e) => setSearchQueryOrder(e.target.value)}
+            placeholder="Search by order ID, customer, or product..." 
+            className="w-full bg-[#0B0E14] border border-zinc-800 rounded-lg py-2 pl-10 pr-4 text-sm text-zinc-300 focus:outline-none focus:border-emerald-500/50"
+          />
+        </div>
+        <select 
+        value={statusFilterOrder}
+        onChange={(e) => setStatusFilterOrder(e.target.value)}
+        className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-300 outline-none">
+          <option value="">All Statuses</option>
+          <option value="Pending">Pending</option>
+          <option value="Dispatched">Dispatched</option>
+          {/* <option value="Delivered">Delivered</option> */}
+        </select>
+        <select 
+          value={priorityFilterOrder}
+          onChange={(e) => setPriorityFilterOrder(e.target.value)}
+          className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-300 outline-none">
+          <option value="">All Priorities</option>
+          <option value={1}>Low</option>
+          <option value={2}>Normal</option>
+          <option value={3}>High</option>
+        </select>
+        <button className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-300 outline-none hover:bg-zinc-800 transition-colors">
+          Date Range
+        </button>
+      </div>
+
+      {/* Main Table Container */}
+      <div className="bg-[#0F1219] border border-zinc-800 rounded-xl overflow-hidden">
+        <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-[#0F1219]">
+          <h3 className="text-white font-bold text-sm">All Orders</h3>
+          <span className="text-[10px] text-zinc-500 font-bold uppercase">{rawOrdersData.length} Orders</span>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full text-left whitespace-nowrap">
+            <thead className="bg-[#0B0E14] border-b border-zinc-800">
+              <tr>
+                <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Order ID</th>
+                <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Customer</th>
+                <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Product</th>
+                <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Destination</th>
+                <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Qty</th>
+                <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Value</th>
+                <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Priority</th>
+                <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Status</th>
+                <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Date/Time</th>
+                <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800 bg-[#0F1219]">
+              {rawOrdersData?.map((order) => (
+                <tr key={order.order_id} className="hover:bg-white/[0.02] transition">
+                  <td className="p-4 text-emerald-500 font-mono text-sm font-bold">ORD-{order.order_id}</td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400">
+                        <User size={12} />
+                      </div>
+                      <span className="text-white text-xs font-medium">{order.customer_name}</span>
+                    </div>
+                  </td>
+                  <td className="p-4 text-zinc-300 text-xs">{order.product_name}</td>
+                  <td className="p-4 text-zinc-400 text-xs flex items-center gap-1"><MapPin size={12} /> {order.destination_address}</td>
+                  <td className="p-4 text-white text-xs font-bold">{order.quantity}</td>
+                  <td className="p-4 text-emerald-500 text-xs font-bold">{order.value}</td>
+                  <td className="p-4">{getPriorityBadge(order.priority_level)}</td>
+                  <td className="p-4">{getStatusBadge(order.order_status)}</td>
+                  <td className="p-4">
+                    <p className="text-[11px] font-bold text-zinc-300">{new Date(order.order_date).toLocaleDateString()}</p>
+                    <p className="text-[10px] text-zinc-600 font-bold uppercase">{new Date(order.order_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                  </td>
+                  <td className="p-4 flex gap-2 justify-center">
+                    <button 
+                      onClick={() => setSelectedOrder(order)}
+                      className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-lg transition"
+                      title="View Details"
+                    >
+                      <Eye size={16} />
+                    </button>
+                    <button className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-lg transition" title="Package Details">
+                      <Box size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-white/[0.02]">
+            <button onClick={() => currentPage > 1 && setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="flex items-center gap-1 text-xs font-bold text-zinc-400 hover:text-white disabled:opacity-30"><ChevronLeft size={14} /> Previous</button>
+            <span className="text-xs text-zinc-500 font-medium">Page <span className="text-white">{currentPage}</span> of {totalPages}</span>
+            <button onClick={() => currentPage < totalPages && setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className="flex items-center gap-1 text-xs font-bold text-zinc-400 hover:text-white disabled:opacity-30">Next <ChevronRight size={14} /></button>
+        </div>
+        </div>
+      </div>
+
+      {/* Refined Order Details Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0F1219] border border-zinc-800 rounded-xl p-6 w-full max-w-lg shadow-2xl relative">
+            <button 
+              onClick={() => setSelectedOrder(null)}
+              className="absolute top-4 right-4 text-zinc-500 hover:text-white p-1 rounded-lg hover:bg-zinc-800 transition"
+            >
+              <X size={20} />
+            </button>
+            
+            <h2 className="text-xl font-black text-white mb-6">Order Details</h2>
+            
+            <div className="flex justify-between border-b border-zinc-800 pb-4 mb-4">
+              <div>
+                <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Order ID</p>
+                <p className="text-emerald-500 font-mono text-sm font-bold">ORD-{selectedOrder.order_id}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Status</p>
+                {getStatusBadge(selectedOrder.order_status)}
+              </div>
+            </div>
+
+            <div className="border-b border-zinc-800 pb-4 mb-4">
+              <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Customer Information</p>
+              <p className="text-white font-bold text-lg">{selectedOrder.customer_name}</p>
+              <p className="text-zinc-500 text-xs font-medium">Destination: {selectedOrder.destination_address}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 border-b border-zinc-800 pb-4 mb-4">
+              <div>
+                <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Product</p>
+                <p className="text-zinc-300 text-sm font-medium">{selectedOrder.product_name}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Quantity</p>
+                <p className="text-white font-bold">{selectedOrder.quantity}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Warehouse</p>
+                <p className="text-zinc-300 text-sm font-medium">{selectedOrder.warehouse_name}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Value</p>
+                <p className="text-emerald-500 font-bold">{selectedOrder.value}</p>
+              </div>
+            </div>
+
+            <div className="bg-[#0B0E14] rounded-lg p-4 mb-6 flex justify-between items-center border border-zinc-800">
+               <div>
+                 <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Tracking Number</p>
+                 <p className="text-white font-mono text-sm font-bold">{selectedOrder.assigned_vehicle_id ? `TRK-${selectedOrder.assigned_vehicle_id}11` : 'Not Assigned'}</p>
+               </div>
+               <div className="text-right">
+                 <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Shipment ID</p>
+                 <p className="text-blue-500 font-mono text-sm font-bold">{selectedOrder.assigned_vehicle_id ? `SHP-${selectedOrder.assigned_vehicle_id}` : 'N/A'}</p>
+               </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button className="flex-1 flex items-center justify-center gap-2 bg-transparent border border-zinc-800 hover:bg-zinc-800 text-white py-2.5 rounded-lg text-sm font-bold transition">
+                <FileText size={16} /> Download Invoice
+              </button>
+              <button className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black py-2.5 rounded-lg text-sm font-bold transition">
+                <Truck size={16} /> Track Shipment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Package, Hash, Calendar, MapPin, ShieldAlert, Warehouse, Loader2, AlertCircle } from "lucide-react";
+import { X, Package, Hash, Calendar, MapPin, ShieldAlert, Loader2, AlertCircle } from "lucide-react";
 
 export default function OrderModal({ isOpen, onCloseAction }) {
     const [status, setStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
@@ -11,7 +11,6 @@ export default function OrderModal({ isOpen, onCloseAction }) {
         date: new Date().toISOString().split('T')[0],
         priorityLvl: 'Normal', // Added back to state
         dest: '',
-        warehouseId: ''
     });
 
     if (!isOpen) return null;
@@ -97,9 +96,13 @@ export default function OrderModal({ isOpen, onCloseAction }) {
                                     <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 uppercase mb-1.5"><Package size={12} className="text-emerald-500" /> Item ID</label>
                                     <input name="itemid" type="text" required onChange={handleChange} className="w-full bg-[#07090D] border border-zinc-800 rounded-lg py-2 px-3 text-sm text-zinc-200 focus:border-emerald-500/50 outline-none transition-all" placeholder="SKU-9921" />
                                 </div>
-                                <div>
+                                {/* <div>
                                     <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 uppercase mb-1.5"><Warehouse size={12} className="text-emerald-500" /> Warehouse ID</label>
                                     <input name="warehouseId" type="text" required onChange={handleChange} className="w-full bg-[#07090D] border border-zinc-800 rounded-lg py-2 px-3 text-sm text-zinc-200 focus:border-emerald-500/50 outline-none transition-all" placeholder="WH-NORTH-01" />
+                                </div> */}
+                                <div>
+                                    <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 uppercase mb-1.5"><Calendar size={12} className="text-emerald-500" /> Required Date</label>
+                                    <input name="date" type="date" value={formData.date} onChange={handleChange} className="w-full bg-[#07090D] border border-zinc-800 rounded-lg py-2 px-3 text-sm text-zinc-200 focus:border-emerald-500/50 outline-none transition-all color-scheme-dark" />
                                 </div>
                             </div>
 
@@ -109,28 +112,23 @@ export default function OrderModal({ isOpen, onCloseAction }) {
                                     <input name="quantity" type="number" required onChange={handleChange} className="w-full bg-[#07090D] border border-zinc-800 rounded-lg py-2 px-3 text-sm text-zinc-200 focus:border-emerald-500/50 outline-none transition-all" placeholder="0" />
                                 </div>
                                 <div>
-                                    <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 uppercase mb-1.5"><Calendar size={12} className="text-emerald-500" /> Required Date</label>
-                                    <input name="date" type="date" value={formData.date} onChange={handleChange} className="w-full bg-[#07090D] border border-zinc-800 rounded-lg py-2 px-3 text-sm text-zinc-200 focus:border-emerald-500/50 outline-none transition-all color-scheme-dark" />
+                                    <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 uppercase mb-1.5">
+                                        <ShieldAlert size={12} className="text-emerald-500" /> Priority Level
+                                    </label>
+                                    <select 
+                                        name="priorityLvl" 
+                                        value={formData.priorityLvl} 
+                                        onChange={handleChange} 
+                                        className="w-full bg-[#07090D] border border-zinc-800 rounded-lg py-2 px-3 text-sm text-zinc-200 focus:border-emerald-500/50 outline-none appearance-none cursor-pointer"
+                                    >
+                                        <option value="Low">Low (Standard)</option>
+                                        <option value="Normal">Normal</option>
+                                        <option value="High">High (Express)</option>
+                                        
+                                    </select>
                                 </div>
                             </div>
-
-                            {/* --- PRIORITY FIELD RESTORED --- */}
-                            <div>
-                                <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 uppercase mb-1.5">
-                                    <ShieldAlert size={12} className="text-emerald-500" /> Priority Level
-                                </label>
-                                <select 
-                                    name="priorityLvl" 
-                                    value={formData.priorityLvl} 
-                                    onChange={handleChange} 
-                                    className="w-full bg-[#07090D] border border-zinc-800 rounded-lg py-2 px-3 text-sm text-zinc-200 focus:border-emerald-500/50 outline-none appearance-none cursor-pointer"
-                                >
-                                    <option value="Low">Low (Standard)</option>
-                                    <option value="Normal">Normal</option>
-                                    <option value="High">High (Express)</option>
-                                    
-                                </select>
-                            </div>
+                           
 
                             <div>
                                 <label className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 uppercase mb-1.5"><MapPin size={12} className="text-emerald-500" /> Shipping Destination</label>

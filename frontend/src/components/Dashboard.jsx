@@ -30,6 +30,9 @@ const Dashboard = ({ children, setActiveTab, activeTab, onLogout}) => {
           <button onClick={() => setActiveTab('dashboard')} className="w-full">
             <SideItem icon={<LayoutDashboard size={18}/>} label="Dashboard" active={activeTab === 'dashboard'} />
           </button>
+          <button onClick={() => setActiveTab('orders')} className="w-full">
+            <SideItem icon={<Package size={18}/>} label="Orders" active={activeTab === 'orders'} />
+          </button>
           <button onClick={() => setActiveTab('logistics')} className="w-full">
             <SideItem icon={<Package size={18}/>} label="Logistics" active={activeTab === 'logistics'} />
           </button>

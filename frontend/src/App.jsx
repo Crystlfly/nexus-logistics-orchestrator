@@ -1,5 +1,6 @@
 import Dashboard from './components/Dashboard';
 import RealMap from './components/RealMap';
+import Orders from './components/Orders.jsx';
 import Logistics from './components/Logistics.jsx';
 import Inventory from './components/Inventory';
 import Fleet from './components/Fleet.jsx';
@@ -166,6 +167,7 @@ function App() {
         </>
       )
       }
+      {activeTab === 'orders' && <Orders />}
       {activeTab === 'logistics' && <Logistics />}
       {activeTab === 'inventory' && <Inventory />}
       {activeTab === 'fleet' && <Fleet />}
