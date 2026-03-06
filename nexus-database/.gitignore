@@ -1,0 +1,7 @@
+
+*.dacpac
+
+
+bin/
+obj/
+
