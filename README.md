@@ -89,6 +89,7 @@ credentials:
     DB_SERVER=your-server-name.database.windows.net
     DB_NAME=NexusDB
     DB_PASSWORD=your_secure_password
+    DB_USER=your_username
     JWT_SECRET=your_secret_key
 
 ### 4. Run the application
