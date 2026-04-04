@@ -11,30 +11,29 @@ export async function createOrder(orderData, authenticatedUsername) {
     const { itemid, quantity, date, priorityLvl, dest } = orderData;
     
     const pool = await establishConnection(config);
-    const transaction = new sql.Transaction(pool);
+    // const transaction = new sql.Transaction(pool);
     const priorityMap = { 'Low':1, 'Normal': 2, 'High': 3 };
     const priorityValue = priorityMap[priorityLvl] || 1;
     
     // Flag to track if transaction is active
-    let transactionStarted = false;
+    // let transactionStarted = false;
 
     try {
-        await transaction.begin();
-        transactionStarted = true;
+        // await transaction.begin();
+        // transactionStarted = true;
 
-        const request = new sql.Request(transaction); // Use the same request object for efficiency
+        const request = new sql.Request(pool); // Use the same request object for efficiency
 
         // 1. Current stock and warehouse_id fetch
-        let cData = await request
-            .input('itemid', sql.Int, itemid)
-            .query('SELECT current_stock, warehouse_id, zone_id, per_volume FROM Products WHERE product_id = @itemid AND IsDeleted=0');
-            
+        // let cData = await request
+        //     .input('itemid', sql.Int, itemid)
+        //     .query('SELECT current_stock, warehouse_id, zone_id, per_volume FROM Products WHERE product_id = @itemid AND IsDeleted=0');
         // Use optional chaining and nullish coalescing safely
-        cData= cData.recordset[0];
-        const stock = cData.current_stock;
+        // cData= cData.recordset[0];
+        // const stock = cData.current_stock;
         
-        if (stock === undefined) throw new Error("Product not found.");
-        if (stock < quantity) throw new Error(`Insufficient stock. Only ${stock} available.`);
+        // if (stock === undefined) throw new Error("Product not found.");
+        // if (stock < quantity) throw new Error(`Insufficient stock. Only ${stock} available.`);
 
         // 2. FIND TRUCK
         // const fleetCheck = await request
@@ -55,50 +54,35 @@ export async function createOrder(orderData, authenticatedUsername) {
         // }
 
         // 3. DEDUCT STOCK
-        const stockUpdateResult =new sql.Request(transaction);
-        await stockUpdateResult
-            .input('qty_deduct', sql.Int, quantity)
-            .input('itemid', sql.Int, itemid)
-            .query('UPDATE Products SET current_stock = current_stock - @qty_deduct WHERE product_id = @itemid');
+        // const stockUpdateResult =new sql.Request(transaction);
+        // await stockUpdateResult
+        //     .input('qty_deduct', sql.Int, quantity)
+        //     .input('itemid', sql.Int, itemid)
+        //     .query('UPDATE Products SET current_stock = current_stock - @qty_deduct WHERE product_id = @itemid');
         
         //4. reduce the occupied capacity in the zone and warehouse
-        const reqWhUpdate = new sql.Request(transaction);
-        await reqWhUpdate
-            .input('warehouseId', sql.Int, cData.warehouse_id)
-            .input('orderedVolume', sql.Int,cData.per_volume*quantity)
-            .query(`update warehouses set used_capacity_sqft=used_capacity_sqft-@orderedVolume WHERE warehouse_id = @warehouseId`);
+        // const reqWhUpdate = new sql.Request(transaction);
+        // await reqWhUpdate
+        //     .input('warehouseId', sql.Int, cData.warehouse_id)
+        //     .input('orderedVolume', sql.Int,cData.per_volume*quantity)
+        //     .query(`update warehouses set used_capacity_sqft=used_capacity_sqft-@orderedVolume WHERE warehouse_id = @warehouseId`);
 
-        const reqZoneUpdate = new sql.Request(transaction);
-        await reqZoneUpdate
-            .input('zoneId', sql.Int, cData.zone_id)
-            .input('orderedVolumeZone', sql.Int,cData.per_volume*quantity)
-            .query(`update zones set current_occupancy=current_occupancy-@orderedVolumeZone WHERE zone_id = @zoneId`);
-        // 4. CREATE ORDER
+        // const reqZoneUpdate = new sql.Request(transaction);
+        // await reqZoneUpdate
+        //     .input('zoneId', sql.Int, cData.zone_id)
+        //     .input('orderedVolumeZone', sql.Int,cData.per_volume*quantity)
+        //     .query(`update zones set current_occupancy=current_occupancy-@orderedVolumeZone WHERE zone_id = @zoneId`);
+        
+            // 4. CREATE ORDER
 
-        const orderInsertResult =new sql.Request(transaction);
-        await orderInsertResult
-            .input('username', sql.VarChar, authenticatedUsername)
-            .input('order_qty', sql.Int, quantity)
-            .input('order_date', sql.DateTime, date)
-            .input('priority', sql.Int, priorityValue)
-            .input('status_str', sql.VarChar, 'Pending')
-            .input('dest_addr', sql.VarChar, dest)
-            .input('wh_id', sql.Int, cData.warehouse_id)
-            .input('itemid', sql.Int, itemid)
-            .query(`
-                INSERT INTO Orders (
-                    customer_name, product_id, quantity, order_date, 
-                    priority_level, order_status, destination_address, 
-                    warehouse_id
-                ) 
-                VALUES (
-                    @username, @itemid, @order_qty, @order_date, 
-                    @priority, @status_str, @dest_addr, 
-                    @wh_id
-                )
-            `);
-
-        await transaction.commit();
+        // const orderInsertResult =new sql.Request(transaction);
+        request.input('username', sql.NVarChar(255), authenticatedUsername);
+        request.input('productId', sql.Int, itemid);
+        request.input('qty', sql.Int, quantity);
+        request.input('date', sql.DateTime, date);
+        request.input('priority', sql.Int, priorityValue);
+        request.input('destination', sql.NVarChar(255), dest);
+        await request.execute('OrderProcessing');
         
         return {
             success: true,
@@ -107,13 +91,14 @@ export async function createOrder(orderData, authenticatedUsername) {
 
     } catch (err) {
         // Only rollback if the transaction actually started and hasn't been aborted by the server
-        if (transactionStarted) {
-            try {
-                await transaction.rollback();
-            } catch (rollbackErr) {
-                console.error("Rollback failed:", rollbackErr.message);
-            }
-        }
+        // if (transactionStarted) {
+        //     try {
+        //         await transaction.rollback();
+        //     } catch (rollbackErr) {
+        //         console.error("Rollback failed:", rollbackErr.message);
+        //     }
+        // }
+        console.error("Order processing failed:", err.message);
         throw err; // Re-throw the original error so your API can handle it
     }
 }

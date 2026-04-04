@@ -16,3 +16,5 @@ CREATE TABLE [dbo].[Orders] (
 );
 GO
 
+ALTER TABLE [dbo].[Orders] ADD CONSTRAINT [CK_OrderStatus] CHECK ([order_status]='Pending' OR [order_status]='Packed' OR [order_status]='Shipped' OR [order_status]='Delivered' OR [order_status]='Cancelled');
+
