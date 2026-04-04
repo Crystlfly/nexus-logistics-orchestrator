@@ -14,7 +14,8 @@ import {
   FileText,
   Truck,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from "lucide-react";
 
 // Extended sample data to match the visual design
@@ -28,6 +29,7 @@ import {
 export default function OrderManagement() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [rawOrdersData, setRawOrdersData] = useState([]);
+  const [isLoading, setIsLoading]= useState(true);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0); 
@@ -60,6 +62,8 @@ export default function OrderManagement() {
       } catch (error) {
         console.error("Failed to fetch orders:", error);
         setRawOrdersData([]);
+      }finally{
+        setIsLoading(false);
       }
     }
     const timer = setTimeout(() => {
@@ -94,6 +98,8 @@ export default function OrderManagement() {
 
     return <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-current ${color}`}>{status}</span>;
   };
+
+  if (isLoading) return <div className="min-h-screen bg-[#0B0E14] flex items-center justify-center text-zinc-500"><Loader2 className="animate-spin mr-2" /> Loading...</div>;
 
   return (
     <div className="space-y-6">
