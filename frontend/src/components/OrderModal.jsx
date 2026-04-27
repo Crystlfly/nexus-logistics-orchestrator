@@ -20,17 +20,22 @@ export default function OrderModal({ isOpen, onCloseAction }) {
         setStatus('loading');
         setErrorMessage('');
 
-        const token = localStorage.getItem('nexus_token');
-
         try {
             const response = await fetch('http://localhost:3000/api/orders', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
                 },
+                credentials: 'include',
                 body: JSON.stringify(formData)
             });
+            if (response.status === 401 || response.status === 403) {
+                alert("Your session has expired. Please log in again.");
+                localStorage.removeItem('nexus_user_role');
+                localStorage.removeItem('nexus_expires_at');
+                window.location.href = '/login';
+                return; 
+            }
 
             const data = await response.json();
 

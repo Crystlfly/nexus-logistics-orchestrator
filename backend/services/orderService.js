@@ -98,6 +98,22 @@ export async function createOrder(orderData, authenticatedUsername) {
                 )
             `);
 
+        const newOrderId = result.recordset[0].order_id;
+
+        // 5. LOG RECENT ACTIVITY
+        const activityRequest = new sql.Request(transaction);
+        await activityRequest
+            .input('wh_id', sql.Int, cData.warehouse_id)
+            .input('type', sql.VarChar, 'Outbound Shipment')
+            .input('ref', sql.VarChar, `ORD-${newOrderId}`)
+            .input('qty', sql.Int, quantity)
+            .input('status', sql.VarChar, 'Pending')
+            .query(`
+                INSERT INTO warehouse_activities 
+                (warehouse_id, activity_type, reference_code, quantity, status, created_at)
+                VALUES (@wh_id, @type, @ref, @qty, @status, GETDATE())
+            `);
+
         await transaction.commit();
         
         return {
@@ -115,5 +131,42 @@ export async function createOrder(orderData, authenticatedUsername) {
             }
         }
         throw err; // Re-throw the original error so your API can handle it
+    }
+}
+
+export async function updateOrderStatus(orderId, newStatus) {
+    try {
+        const pool = await establishConnection(config);
+
+        // 1. Fetch order details for the activity log
+        const orderData = await pool.request()
+            .input('orderId', sql.Int, orderId)
+            .query('SELECT warehouse_id, quantity FROM Orders WHERE order_id = @orderId');
+        
+        if (orderData.recordset.length === 0) throw new Error("Order not found");
+        const { warehouse_id, quantity } = orderData.recordset[0];
+
+        // 2. Update Order Status
+        await pool.request()
+            .input('orderId', sql.Int, orderId)
+            .input('newStatus', sql.VarChar, newStatus)
+            .query(`UPDATE Orders SET order_status = @newStatus WHERE order_id = @orderId`);
+
+        // 3. Log Activity
+        await pool.request()
+            .input('wh_id', sql.Int, warehouse_id)
+            .input('type', sql.VarChar, 'Outbound Shipment')
+            .input('ref', sql.VarChar, `ORD-${orderId}`)
+            .input('qty', sql.Int, quantity)
+            .input('status', sql.VarChar, newStatus)
+            .query(`
+                INSERT INTO warehouse_activities 
+                (warehouse_id, activity_type, reference_code, quantity, status, created_at)
+                VALUES (@wh_id, @type, @ref, @qty, @status, GETDATE())
+            `);
+
+    } catch(err) {
+        console.error("Order Status Update Error:", err.message);
+        throw new Error("Failed to update order status.");
     }
 }

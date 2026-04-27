@@ -9,11 +9,32 @@ import {
   LogOut,
   User
 } from "lucide-react";
+import { NavLink } from 'react-router-dom';
 
-import {getRoleFromToken} from './getRoleFromToken';
+const formatRole = (role) => {
+  if (!role) return "";
 
-const Dashboard = ({ children, setActiveTab, activeTab, onLogout}) => {
-    const userRole = getRoleFromToken(localStorage.getItem('nexus_token'));
+  return role
+    .toLowerCase()
+    .split("_")
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+const getInitials = (name) => {
+  if (!name) return "U"; 
+
+  return name
+    .replace(/_/g, " ")       
+    .split(" ")
+    .filter(Boolean)
+    .map(word => word[0].toUpperCase())
+    .slice(0, 2)              
+    .join(" ");
+};
+
+const Dashboard = ({ children, onLogout}) => {
+    const userRole = (localStorage.getItem('nexus_user_role'));
   return (
     <div className="flex w-full min-h-screen bg-[#0B0E14] text-zinc-400 font-sans">
       {/* Sidebar */}
@@ -27,38 +48,26 @@ const Dashboard = ({ children, setActiveTab, activeTab, onLogout}) => {
         </div>
         
         <nav className="flex-1 px-4 space-y-1 mt-4">
-          <button onClick={() => setActiveTab('dashboard')} className="w-full">
-            <SideItem icon={<LayoutDashboard size={18}/>} label="Dashboard" active={activeTab === 'dashboard'} />
-          </button>
-          <button onClick={() => setActiveTab('orders')} className="w-full">
-            <SideItem icon={<Package size={18}/>} label="Orders" active={activeTab === 'orders'} />
-          </button>
-          <button onClick={() => setActiveTab('logistics')} className="w-full">
-            <SideItem icon={<Package size={18}/>} label="Logistics" active={activeTab === 'logistics'} />
-          </button>
-          <button onClick={() => setActiveTab('inventory')} className="w-full">
-            <SideItem icon={<CirclePile size={18}/>} label="Inventory" active={activeTab === 'inventory'} />
-          </button>
+          <SideItem to="/" icon={<LayoutDashboard size={18}/>} label="Dashboard" end />
+          <SideItem to="/orders" icon={<Package size={18}/>} label="Orders" />
+          <SideItem to="/logistics" icon={<Package size={18}/>} label="Logistics" />
+          <SideItem to="/inventory" icon={<CirclePile size={18}/>} label="Inventory" />
           {userRole !== 'inventory_manager' && (
-            <button onClick={()=> setActiveTab('fleet')} className="w-full">
-              <SideItem icon={<Truck size={18}/>} label="Fleet" active={activeTab === 'fleet'}/>
-            </button>
+            <SideItem to="/fleet" icon={<Truck size={18}/>} label="Fleet" />
           )}
-          <button onClick={()=> setActiveTab('warehouse')} className="w-full">
-            <SideItem icon={<Warehouse size={18}/>} label="Warehouse" active={activeTab === 'warehouse'} />
-          </button>
+          
+          <SideItem to="/warehouse" icon={<Warehouse size={18}/>} label="Warehouse" />
+          
           {userRole === 'system_admin' && (
-            <button onClick={()=> setActiveTab('user')} className="w-full">
-              <SideItem icon={<User size={18}/>} label="Users" active={activeTab === 'user'} />
-            </button>
+            <SideItem to="/user" icon={<User size={18}/>} label="Users" />
           )}
         </nav>
 
         <div className="p-4 border-t border-zinc-800">
           <div className="flex items-center gap-3 p-2">
-            <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] text-white">OM</div>
+            <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] text-white">{getInitials(localStorage.getItem('nexus_user_role'))}</div>
             <div className="overflow-hidden">
-              <p className="text-xs font-bold text-white truncate">Ops Manager</p>
+              <p className="text-xs font-bold text-white truncate">{formatRole(localStorage.getItem('nexus_user_role'))}</p>
               {/* <p className="text-[10px] text-zinc-500 truncate">manager@nexus.io</p> */}
             </div>
           </div>
@@ -82,11 +91,21 @@ const Dashboard = ({ children, setActiveTab, activeTab, onLogout}) => {
   );
 };
 
-const SideItem = ({ icon, label, active = false }) => (
-  <a href="#" className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${active ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'hover:bg-zinc-800'}`}>
+const SideItem = ({ icon, label, to, end }) => (
+  <NavLink 
+    to={to} 
+    end={end}
+    className={({ isActive }) => 
+      `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+        isActive 
+          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
+          : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300'
+      }`
+    }
+  >
     <span>{icon}</span>
     {label}
-  </a>
+  </NavLink>
 );
 
 export default Dashboard;

@@ -52,8 +52,6 @@ export default function WarehouseModal({ isOpen, onCloseAction, initialToBeUpdat
         e.preventDefault();
         setStatus('loading');
         setErrorMessage('');
-
-        const token = localStorage.getItem('nexus_token');
         try{
             const payload = {
                 name: formData.name,
@@ -73,10 +71,18 @@ export default function WarehouseModal({ isOpen, onCloseAction, initialToBeUpdat
                 method: method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
                 },
+                credentials: 'include',
                 body: JSON.stringify(payload)
             });
+
+            if (response.status === 401 || response.status === 403) {
+                alert("Your session has expired. Please log in again.");
+                localStorage.removeItem('nexus_user_role');
+                localStorage.removeItem('nexus_expires_at');
+                window.location.href = '/login';
+                return; 
+            }
 
             // 1. Check if the HTTP request was successful (Status 200-299)
             if (response.ok) {
@@ -163,10 +169,8 @@ export default function WarehouseModal({ isOpen, onCloseAction, initialToBeUpdat
             className="w-full bg-[#07090D] border border-zinc-800 rounded-lg py-2 px-3 text-sm text-zinc-200 focus:border-emerald-500/50 outline-none appearance-none cursor-pointer"
         >
             <option value="" disabled>Select Type</option>
-            <option value="Distribution">Distribution</option>
-            <option value="Fulfillment">Fulfillment</option>
-            <option value="Port">Port</option>
-            <option value="Cold Storage">Cold Storage</option>
+            <option value="Distribution Center">Distribution Center</option>
+            <option value="Fulfillment Center">Fulfillment Center</option>
         </select>
     </div>
 </div>

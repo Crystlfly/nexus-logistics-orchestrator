@@ -30,7 +30,8 @@ const ResetPasswordPage = () => {
 
       if (res.ok) {
         setStatus('success');
-        localStorage.removeItem('nexus_token');
+        localStorage.removeItem('nexus_user_role');
+        localStorage.removeItem('nexus_expires_at');
         setTimeout(() => navigate('/login'), 3000);
       } else {
         setStatus('error');

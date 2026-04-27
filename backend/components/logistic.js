@@ -1,11 +1,12 @@
 import { Router } from "express";
 import sql from "mssql";
 import dbconfigSetup from "../dbconfigSetup.js";
+import {authenticateToken} from '../middleware/auth.js';
 
 const router = Router();
 const config = dbconfigSetup;
 
-router.get("/api/logistics", async (req, res) => {
+router.get("/api/logistics", authenticateToken, async (req, res) => {
   try {
     const pool = await sql.connect(config);
     const page = parseInt(req.query.page) || 1;
@@ -27,7 +28,7 @@ router.get("/api/logistics", async (req, res) => {
     };
 
     if (search) {
-      whereClause += " AND (CAST(order_id AS VARCHAR(255)) LIKE @search OR CAST(order_id AS VARCHAR(255)) LIKE @search OR CAST(current_location AS VARCHAR(255)) LIKE @search OR vehicle_type LIKE @search)";
+      whereClause += " AND (CAST(order_id AS VARCHAR(255)) LIKE @search OR origin LIKE @search OR destination LIKE @search OR carrier LIKE @search)";
     }
     if (status) {
       whereClause += " AND order_status = @status";

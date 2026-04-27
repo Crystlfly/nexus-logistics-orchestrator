@@ -4,14 +4,15 @@ import {
   Search, Download, Plus, MapPin, 
   Anchor, Truck, Package, Loader2, MoreVertical, ChevronLeft, ChevronRight, Edit, Trash2
 } from 'lucide-react';
-import { getRoleFromToken } from './getRoleFromToken';
+import CustomSelect from './CustomSelect'; 
+import ActivityFeed from './ActivityFeed';
 
 // IMPORT SUB-COMPONENTS
 import WarehouseModal from './WarehouseModal'; // You said you have this
 import Zones from './Zones'; // The file we just created
 
 const WarehouseManagement = () => {
-  const userRole = getRoleFromToken(localStorage.getItem('nexus_token'));
+  const userRole = (localStorage.getItem('userRole'));
   // --- STATE: WAREHOUSES ---
   const [warehouseData, setWarehouseData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,7 +23,8 @@ const WarehouseManagement = () => {
 
   // Pagination & Filter
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0); 
+  const [pageInput, setPageInput] = useState(currentPage);
+  const [totalPages, setTotalPages] = useState(1); 
   const [searchQueryWarehouse, setSearchQueryWarehouse] = useState("");
   const [typeFilterWarehouse, setTypeFilterWarehouse] = useState("All Types");
   const itemsPerPage = 10;
@@ -37,7 +39,19 @@ const WarehouseManagement = () => {
           type: typeFilterWarehouse !== "All Types" ? typeFilterWarehouse : ""
         });
 
-        const response = await fetch(`http://localhost:3000/api/warehouses?${params}`);
+        const response = await fetch(`http://localhost:3000/api/warehouses?${params}`,{
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+        if (response.status === 401 || response.status === 403) {
+          alert("Your session has expired. Please log in again.");
+          localStorage.removeItem('nexus_user_role');
+          localStorage.removeItem('nexus_expires_at');
+          window.location.href = '/login';
+          return; 
+        }
         if (!response.ok) throw new Error('Failed to fetch data');
         const json = await response.json();
         const rawData = json.data || json;
@@ -74,6 +88,36 @@ const WarehouseManagement = () => {
     return () => clearTimeout(timer);
   }, [currentPage, searchQueryWarehouse, typeFilterWarehouse]);
 
+  useEffect(() => {
+    setPageInput(currentPage);
+  }, [currentPage]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      let value = parseInt(pageInput);
+
+      if (isNaN(value)) return;
+      if (value < 1) value = 1;
+      if (value > totalPages) value = totalPages;
+
+      if (value !== currentPage) {
+        setCurrentPage(value);
+      }
+    }, 800); // debounce delay
+
+    return () => clearTimeout(timer);
+  }, [pageInput]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      let value = parseInt(pageInput);
+
+      if (!value) value = 1;
+      if (value < 1) value = 1;
+      if (value > totalPages) value = totalPages;
+
+      setCurrentPage(value);
+    }
+  };
   // --- METRICS ---
   const metrics = useMemo(() => {
     if (!warehouseData.length) return { cost: 0, staff: 0, totalCap: 0, usedCap: 0, util: 0, active: 0 };
@@ -97,12 +141,20 @@ const WarehouseManagement = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure?")) {
       try {
-        const token = localStorage.getItem('nexus_token'); 
         const numericId = id.replace('WH-', '');
         const response = await fetch(`http://localhost:3000/api/deleteWarehouse/${numericId}`, {
           method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          
         });
+        if (response.status === 401 || response.status === 403) {
+          alert("Your session has expired. Please log in again.");
+          localStorage.removeItem('nexus_user_role');
+          localStorage.removeItem('nexus_expires_at');
+          window.location.href = '/login';
+          return; 
+        }
         if (response.ok) { setOpenMenuId(null); fetchWarehouses(); }
         else { const e = await response.json(); alert(e.error); }
       } catch (err) { console.error(err); }
@@ -150,12 +202,13 @@ const WarehouseManagement = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" size={18} />
           <input type="text" value={searchQueryWarehouse} onChange={(e) => setSearchQueryWarehouse(e.target.value)} placeholder="Search..." className="w-full bg-[#0F1219] border border-zinc-800 rounded-lg py-2.5 pl-10 pr-4 text-sm focus:border-emerald-500/50 outline-none text-white" />
         </div>
-        <select value={typeFilterWarehouse} onChange={(e) => setTypeFilterWarehouse(e.target.value)} className="bg-[#0F1219] border border-zinc-800 rounded-lg px-4 text-sm outline-none text-zinc-400">
-          <option>All Types</option>
-          <option>Distribution</option>
-          <option>Port</option>
-          <option>Fulfilment</option>
-        </select>
+        <CustomSelect 
+          value={typeFilterWarehouse}
+          onChange={setTypeFilterWarehouse}
+          options={[
+            'All Types', 'Distribution Center', 'Fulfillment Center'
+          ]}
+        />
       </div>
       
 
@@ -181,8 +234,18 @@ const WarehouseManagement = () => {
         {/* Pagination */}
         <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-white/[0.02]">
             <button onClick={() => currentPage > 1 && setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="flex items-center gap-1 text-xs font-bold text-zinc-400 hover:text-white disabled:opacity-30"><ChevronLeft size={14} /> Previous</button>
-            <span className="text-xs text-zinc-500 font-medium">Page <span className="text-white">{currentPage}</span> of {totalPages}</span>
-            <button onClick={() => currentPage < totalPages && setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className="flex items-center gap-1 text-xs font-bold text-zinc-400 hover:text-white disabled:opacity-30">Next <ChevronRight size={14} /></button>
+              <span className="text-xs text-zinc-500 font-medium flex items-center gap-2">
+                Page
+                <input
+                  type="text"
+                  value={pageInput}
+                  onChange={(e) => setPageInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="w-12 text-center bg-[#0F1219] border border-zinc-800 rounded px-2 py-1 text-white focus:border-emerald-500/50 outline-none"
+                />
+                of {totalPages}
+              </span>            
+              <button onClick={() => currentPage < totalPages && setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className="flex items-center gap-1 text-xs font-bold text-zinc-400 hover:text-white disabled:opacity-30">Next <ChevronRight size={14} /></button>
         </div>
       </div>
 
@@ -195,17 +258,8 @@ const WarehouseManagement = () => {
         </div>
 
         {/* RIGHT: ACTIVITY FEED (Inline for simplicity or move to separate file) */}
-        <div className="bg-[#0F1219] border border-zinc-800 rounded-xl flex flex-col h-full">
-          <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
-            <h3 className="text-sm font-black uppercase tracking-widest text-white">Recent Activity</h3>
-            <Activity size={16} className="text-emerald-500" />
-          </div>
-          <div className="p-4 space-y-6 flex-1 overflow-y-auto max-h-[500px] scrollbar-hide">
-            <ActivityItem type="Inbound Receipt" loc="Dallas DC" id="PO-28451" qty="1,200" time="2 mins ago" status="Completed" />
-            <ActivityItem type="Outbound Shipment" loc="New York Hub" id="SO-19872" qty="850" time="5 mins ago" status="Completed" />
-            <ActivityItem type="Stock Transfer" loc="LA Distribution" id="TR-45612" qty="500" time="12 mins ago" status="In Progress" />
-            <ActivityItem type="Cycle Count" loc="Chicago Central" id="CC-00234" qty="3,200" time="25 mins ago" status="In Progress" />
-          </div>
+        <div className="lg:col-span-1">
+          <ActivityFeed />
         </div>
       </div>
     </div>
@@ -236,7 +290,7 @@ const WarehouseRow = ({ data, isOpen, onToggle, onDelete, onUpdate }) => {
     if(type === 'Distribution') return <Truck size={12} />;
     return <Package size={12} />;
   };
-  const userRole = getRoleFromToken(localStorage.getItem('nexus_token'));
+  const userRole = (localStorage.getItem('userRole'));
   return (
     <tr className="hover:bg-white/[0.02] transition-colors group">
       <td className="p-4">
@@ -255,8 +309,8 @@ const WarehouseRow = ({ data, isOpen, onToggle, onDelete, onUpdate }) => {
       </td>
       <td className="p-4">
         <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide border
-          ${data.type === 'Port' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 
-            data.type === 'Distribution' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 
+          ${data.type === 'Fulfillment Center' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 
+            data.type === 'Distribution Center' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 
             'bg-zinc-800 text-zinc-400 border-zinc-700'}`}>
           {getTypeIcon(data.type)}
           {data.type}

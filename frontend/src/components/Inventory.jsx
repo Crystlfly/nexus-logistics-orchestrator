@@ -1,11 +1,11 @@
-import { Package, TrendingDown, TrendingUp, AlertCircle, Search, Download, Plus, Loader2, MoreVertical, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Package, TrendingDown, TrendingUp, AlertCircle, Search, Download, Plus, Loader2, MoreVertical, ChevronLeft, ChevronRight, ChevronDown, Edit, Trash2 } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
 import InventoryModal from './InventoryModal';
-import {getRoleFromToken} from './getRoleFromToken';
 import csvDownloadHelper from './csvDownloadHelper'
+import CustomSelect from './CustomSelect'; 
 
 const Inventory = () => {
-  const userRole = getRoleFromToken(localStorage.getItem('nexus_token'));
+  const userRole = (localStorage.getItem('nexus_user_role'));
   const [inventoryData, setInventoryData] = useState([]);
   const [stats, setStats] = useState({ total: 0, low: 0, over: 0, out: 0 }); 
   const [isLoading, setIsLoading] = useState(true);
@@ -13,7 +13,8 @@ const Inventory = () => {
   const [selectedItem, setSelectedItem] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0); 
+  const [pageInput, setPageInput] = useState(currentPage);
+  const [totalPages, setTotalPages] = useState(1); 
   const [totalItems, setTotalItems] = useState(0);
   
   const [searchQuery, setSearchQuery] = useState("");
@@ -26,7 +27,6 @@ const Inventory = () => {
   const itemsPerPage = 10;
 
   const fetchInventory = async () => {
-    setIsLoading(true);
     try {
       // Create Query String with Page + Filters
       const params = new URLSearchParams({
@@ -37,8 +37,20 @@ const Inventory = () => {
         status: statusFilter !== "All Statuses" ? statusFilter : ""
       });
 
-      const response = await fetch(`http://localhost:3000/api/inventory?${params}`);
+      const response = await fetch(`http://localhost:3000/api/inventory?${params}`,{
+        headers: {
+          'Content-Type': 'application/json' 
+        },
+        credentials: 'include'
+      });
       const data = await response.json();
+      if (response.status === 401 || response.status === 403) {
+        alert("Your session has expired. Please log in again.");
+        localStorage.removeItem('nexus_user_role');
+        localStorage.removeItem('nexus_expires_at');
+        window.location.href = '/login';
+        return; 
+      }
 
       if (data.status === 200) {
         setInventoryData(data.data); // This is now ONLY the 10 items
@@ -74,18 +86,53 @@ const Inventory = () => {
     if (currentPage > 1) setCurrentPage(prev => prev - 1);
   };
 
+  useEffect(() => {
+    setPageInput(currentPage);
+  }, [currentPage]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      let value = parseInt(pageInput);
+  
+      if (isNaN(value)) return;
+      if (value < 1) value = 1;
+      if (value > totalPages) value = totalPages;
+  
+      if (value !== currentPage) {
+        setCurrentPage(value);
+      }
+    }, 800); // debounce delay
+  
+    return () => clearTimeout(timer);
+  }, [pageInput]);
+  
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      let value = parseInt(pageInput);
+  
+      if (!value) value = 1;
+      if (value < 1) value = 1;
+      if (value > totalPages) value = totalPages;
+  
+      setCurrentPage(value);
+    }
+  };
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this SKU?")) {
       try {
-        const token = localStorage.getItem('nexus_token'); 
-
         const response = await fetch(`http://localhost:3000/api/deleteProduct/${id}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${token}`, 
             'Content-Type': 'application/json'
-          }
+          },
+          credentials: 'include',
         });
+        if (response.status === 401 || response.status === 403) {
+          alert("Your session has expired. Please log in again.");
+          localStorage.removeItem('nexus_user_role');
+          localStorage.removeItem('nexus_expires_at');
+          window.location.href = '/login';
+          return; 
+        }
 
         if (response.ok) {
           fetchInventory(); // Refresh list after deletion
@@ -111,6 +158,8 @@ const Inventory = () => {
     fetchInventory();    
   };
 
+  
+
   const handleExport=async ()=>{
     const header=["Name","SKU","reorder_level","current_stock","unit_price","Category","Status"];
     try{
@@ -122,9 +171,20 @@ const Inventory = () => {
       status: statusFilter !== "All Statuses" ? statusFilter : ""
     });
 
-      const response = await fetch(`http://localhost:3000/api/inventory?${params}`);
+      const response = await fetch(`http://localhost:3000/api/inventory?${params}`,{
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
       const result=await response.json();
-      
+      if (response.status === 401 || response.status === 403) {
+        alert("Your session has expired. Please log in again.");
+        localStorage.removeItem('nexus_user_role');
+        localStorage.removeItem('nexus_expires_at');
+        window.location.href = '/login';
+        return; 
+      }
       if(result.status==200){
         const data=result.data;
         const rows = data.map(item => [
@@ -193,28 +253,26 @@ const Inventory = () => {
             type="text" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by SKU, product name, or warehouse..." 
+            placeholder="Search by SKU, product name, or category..." 
             className="w-full bg-[#0B0E14] border border-zinc-800 rounded-lg py-2.5 pl-10 pr-4 text-sm text-zinc-300 focus:outline-none focus:border-emerald-500/50 transition-colors"
           />
         </div>
-        <select 
-        value={categoryFilter}
-        onChange={(e) => setCategoryFilter(e.target.value)}
-        className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-300 outline-none">
-          <option>All Categories</option>
-          <option>Hardware</option>
-          <option>Fluids</option>
-          <option>Electronics</option>
-        </select>
-        <select 
-        value={statusFilter}
-        onChange={(e) => setStatusFilter(e.target.value)}
-        className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-300 outline-none">
-          <option>All Statuses</option>
-          <option>In-Stock</option>
-          <option>Low Stock</option>
-          <option>Out of Stock</option>
-        </select>
+        <CustomSelect 
+          value={categoryFilter}
+          onChange={setCategoryFilter}
+          options={[
+            'All Categories', 'Electronics', 'Furniture', 'Apparel', 
+            'Pharmaceuticals', 'Food & Bev', 'Biologics', 
+            'Enterprise Hardware', 'Data Storage', 'Secure Documents'
+          ]}
+        />
+        <CustomSelect 
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={[
+            'All Statuses', 'In-Stock', 'Low Stock', 'Out of Stock'
+          ]}
+        />
       </div>
 
       {/* Inventory Table */}
@@ -260,9 +318,17 @@ const Inventory = () => {
             <ChevronLeft size={14} /> Previous
           </button>
 
-          <span className="text-xs text-zinc-500 font-medium">
-            Page <span className="text-white">{currentPage}</span> of {totalPages}
-          </span>
+          <span className="text-xs text-zinc-500 font-medium flex items-center gap-2">
+            Page
+            <input
+              type="text"
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-12 text-center bg-[#0F1219] border border-zinc-800 rounded px-2 py-1 text-white focus:border-emerald-500/50 outline-none"
+            />
+              of {totalPages}
+          </span> 
 
           <button 
             onClick={handleNextPage}
@@ -291,7 +357,7 @@ const InvStatCard = ({ icon, label, value, trend, color }) => (
 );
 
 const InventoryRow = ({ item, isOpen, onToggle, onDelete, onUpdate }) => {
-  const userRole = getRoleFromToken(localStorage.getItem('nexus_token'));
+  const userRole = (localStorage.getItem('nexus_user_role'));
   const { product_id, sku, name, category, current_stock, reorder_level, status, unit_price, warehouse_id, zone_id } = item;
 
   const val = `$${(unit_price || 0).toLocaleString()}`;

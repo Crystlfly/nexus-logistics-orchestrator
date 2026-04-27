@@ -7,7 +7,7 @@ import dbconfigSetup from '../dbconfigSetup.js';
 const router =Router();
 const config=dbconfigSetup;
 
-router.get("/api/users", async (req, res) => {
+router.get("/api/users", authenticateToken, async (req, res) => {
     try{
         const pool = await sql.connect(config);
         const page = parseInt(req.query.page) || 1;
@@ -26,10 +26,10 @@ router.get("/api/users", async (req, res) => {
         };
 
         if (search) {
-            whereClause += " AND (username LIKE @search OR email LIKE @search OR role LIKE @search)";
+            whereClause += " AND (FullName LIKE @search OR Email LIKE @search OR Role LIKE @search)";
         }
         if (category && category !== "All Roles") {
-            whereClause += " AND role = @category";
+            whereClause += " AND Role = @category";
         }
         
         const query = `

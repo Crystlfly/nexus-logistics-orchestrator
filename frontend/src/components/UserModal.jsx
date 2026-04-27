@@ -32,8 +32,6 @@ export default function UserModal({ isOpen, onCloseAction, initialData = null })
         setStatus('loading');
         setErrorMessage('');
 
-        const token = localStorage.getItem('nexus_token');
-
         // Backend expects strings for Role
         const payload = {
             fullName: formData.fullName,
@@ -52,10 +50,17 @@ export default function UserModal({ isOpen, onCloseAction, initialData = null })
                 method: method,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
                 },
+                credentials: 'include',
                 body: JSON.stringify(payload)
             });
+            if (response.status === 401 || response.status === 403) {
+                alert("Your session has expired. Please log in again.");
+                localStorage.removeItem('nexus_user_role');
+                localStorage.removeItem('nexus_expires_at');
+                window.location.href = '/login';
+                return; 
+            }
 
             if (response.ok) {
                 setStatus('success');

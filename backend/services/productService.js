@@ -15,14 +15,13 @@ export async function addProduct(productData, authenticatedUsername) {
 
         const warehouseRequest = pool.request();
         warehouseRequest.input('requiredVolume', sql.Float, total_vol);
-        console.log(total_vol);
+        
         const warehouseResult = await warehouseRequest.query(`
             SELECT TOP 1 warehouse_id 
             FROM Warehouses 
             WHERE (total_capacity_sqft - used_capacity_sqft) >= @requiredVolume AND
             IsDeleted=0
             ORDER BY (total_capacity_sqft - used_capacity_sqft) DESC
-
         `);
 
         if (warehouseResult.recordset.length === 0) {
@@ -43,7 +42,6 @@ export async function addProduct(productData, authenticatedUsername) {
             ORDER BY (capacity_limit - current_occupancy) DESC
             `);
         const zoneId=zoneResult.recordset[0].zone_id;
-        
         
         const insertResult = await pool.request()
             .input('name', sql.VarChar, name)
@@ -66,15 +64,31 @@ export async function addProduct(productData, authenticatedUsername) {
                 SET used_capacity_sqft = used_capacity_sqft + @requiredVolume
                 WHERE warehouse_id = @warehouseId;
 
-                update Zones
-                set current_occupancy=current_occupancy+@requiredVolume
-                where zone_id= @zoneId;
+                UPDATE Zones
+                SET current_occupancy = current_occupancy + @requiredVolume
+                WHERE zone_id = @zoneId;
             `);
+
         if (insertResult.recordset && insertResult.recordset[0]) {
+            const newProductId = insertResult.recordset[0].product_id;
+
+            // --- LOG RECENT ACTIVITY ---
+            await pool.request()
+                .input('wh_id', sql.Int, warehouseId)
+                .input('type', sql.VarChar, 'Inbound Receipt')
+                .input('ref', sql.VarChar, sku) // Using SKU as the reference for new product entry
+                .input('qty', sql.Int, currentStock)
+                .input('status', sql.VarChar, 'Completed')
+                .query(`
+                    INSERT INTO warehouse_activities 
+                    (warehouse_id, activity_type, reference_code, quantity, status, created_at)
+                    VALUES (@wh_id, @type, @ref, @qty, @status, GETDATE())
+                `);
+
             return { 
                 status: "success", 
                 message: "Product added successfully",
-                productId: insertResult.recordset[0].product_id 
+                productId: newProductId 
             };
         } else {
             throw new Error("Error adding product");
@@ -89,6 +103,13 @@ export async function updateProduct(productId, productData) {
         const pool = await establishConnection(config);
         const { name, sku, reorderLevel, currentStock, unitPrice, category, status } = productData;
         
+        // Fetch existing data to know which warehouse to log for
+        const existingData = await pool.request()
+            .input('id', sql.Int, productId)
+            .query('SELECT warehouse_id FROM Products WHERE product_id = @id');
+        
+        const warehouseId = existingData.recordset[0]?.warehouse_id;
+
         await pool.request()
             .input('id', sql.Int, productId)
             .input('name', sql.VarChar, name)
@@ -105,6 +126,21 @@ export async function updateProduct(productId, productData) {
                     category = @category, status = @status
                 WHERE product_id = @id
             `);
+
+        // Log manual adjustment/update
+        if (warehouseId) {
+            await pool.request()
+                .input('wh_id', sql.Int, warehouseId)
+                .input('type', sql.VarChar, 'Stock Adjustment')
+                .input('ref', sql.VarChar, sku)
+                .input('qty', sql.Int, currentStock)
+                .input('status', sql.VarChar, 'Updated')
+                .query(`
+                    INSERT INTO warehouse_activities 
+                    (warehouse_id, activity_type, reference_code, quantity, status, created_at)
+                    VALUES (@wh_id, @type, @ref, @qty, @status, GETDATE())
+                `);
+        }
 
         return { status: "success", message: "Product updated successfully" };
     } catch (err) {
