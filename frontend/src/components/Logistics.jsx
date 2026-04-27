@@ -10,8 +10,7 @@ import {
   MoreVertical
 } from "lucide-react";
 import { useState, useEffect } from 'react';
-
-
+import CustomSelect from './CustomSelect'; 
 
 const Logistics = () => {
   const [logisticData, setLogicticData]= useState([]);
@@ -20,7 +19,7 @@ const Logistics = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0); 
   const [searchQueryLogistic, setSearchQueryLogistic] = useState("");
-  const [statusFilterLogistic, setStatusFilterLogistic] = useState("");
+  const [statusFilterLogistic, setStatusFilterLogistic] = useState("All Statuses");
   const [vehicleFilterLogistic, setVehicleFilterLogistic] = useState("");
   const itemsPerPage = 10;
 
@@ -31,10 +30,22 @@ const Logistics = () => {
           page: currentPage,
           limit: itemsPerPage,
           search: searchQueryLogistic,
-          status: statusFilterLogistic,
+          status: statusFilterLogistic === "All Statuses" ? "" : statusFilterLogistic,
           vehicle: vehicleFilterLogistic
         });
-        const response=await fetch(`http://localhost:3000/api/logistics?${params}`)
+        const response=await fetch(`http://localhost:3000/api/logistics?${params}`,{
+          headers: {
+            'Content-Type': 'application/json' 
+          },
+          credentials: 'include',
+        })
+        if (response.status === 401 || response.status === 403) {
+          alert("Your session has expired. Please log in again.");
+          localStorage.removeItem('nexus_user_role');
+          localStorage.removeItem('nexus_expires_at');
+          window.location.href = '/login';
+          return; 
+        }
        if(!response.ok){
         setLogicticData([]);
        }
@@ -58,6 +69,10 @@ const Logistics = () => {
       setCurrentPage(1);
   }, [searchQueryLogistic, statusFilterLogistic, vehicleFilterLogistic]);
 
+  const activeCount = logisticData.length; 
+  const transitCount = logisticData.length; 
+  const uniqueRoutes = new Set(logisticData.map(s => s.destination)).size;
+
   if (isLoading) return <div className="min-h-screen bg-[#0B0E14] flex items-center justify-center text-zinc-500"><Loader2 className="animate-spin mr-2" /> Loading...</div>;
   
   return (
@@ -79,10 +94,10 @@ const Logistics = () => {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard icon={<Package />} label="Total Shipments" value={logisticData.length} trend="+18%" color="emerald" />
-        <StatCard icon={<TrendingUp />} label="In Transit" value={logisticData.filter(s => s.order_status === 'In Transit').length} trend="+5%" color="emerald" />
-        <StatCard icon={<Clock />} label="Avg. Delivery Time" value={logisticData.length > 0 ? `${(logisticData.reduce((sum, s) => sum + (s.eta ? parseInt(s.eta) : 0), 0) / logisticData.length).toFixed(1)}h` : "0h"} trend="-12%" color="rose" />
-        <StatCard icon={<MapPin />} label="Active Routes" value={logisticData.filter(s => s.order_status === 'In Transit').length} trend="+8%" color="emerald" />
+        <StatCard icon={<Package />} label="Total Shipments" value={totalPages * itemsPerPage || activeCount} trend="+18%" color="emerald" />
+        <StatCard icon={<TrendingUp />} label="Active in Fleet" value={transitCount} trend="+5%" color="emerald" />
+        <StatCard icon={<Clock />} label="Avg. Transit" value="4.2d" trend="-12%" color="rose" />
+        <StatCard icon={<MapPin />} label="Active Routes" value={uniqueRoutes || "12"} trend="+8%" color="emerald" />
       </div>
 
       {/* Filter Bar */}
@@ -97,15 +112,13 @@ const Logistics = () => {
             className="w-full bg-[#0B0E14] border border-zinc-800 rounded-lg py-2 pl-10 pr-4 text-sm text-zinc-300 focus:outline-none focus:border-emerald-500/50"
           />
         </div>
-        <select 
-        value={statusFilterLogistic}
-        onChange={(e) => setStatusFilterLogistic(e.target.value)}
-        className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-300 outline-none">
-          <option value="">All Statuses</option>
-          <option value="Dispatched">In Transit</option>
-          <option value="Delayed">Delayed</option>
-          <option value="Delivered">Delivered</option>
-        </select>
+        <CustomSelect 
+          value={statusFilterLogistic}
+          onChange={setStatusFilterLogistic}
+          options={[
+            'All Statuses', 'In Transit', 'Packed', 'Delivered'
+          ]}
+        />
       </div>
 
       {/* Shipments List */}
@@ -116,39 +129,82 @@ const Logistics = () => {
         </div>
         
         <div className="divide-y divide-zinc-800">
-          {/* <ShipmentRow id="SHP-9281" origin="Dallas DC" dest="Austin, TX" progress={68} status="In Transit" eta="1h 25m" carrier="FastTrack Logistics" weight="2,450 lbs" color="blue" />
-          <ShipmentRow id="SHP-9280" origin="Miami Port" dest="Orlando, FL" progress={42} status="Delayed" eta="3h 10m" carrier="Ocean Express" weight="5,120 lbs" color="rose" />
-          <ShipmentRow id="SHP-9279" origin="Chicago Central" dest="Detroit, MI" progress={85} status="In Transit" eta="45m" carrier="RapidShip Co." weight="1,890 lbs" color="blue" />
-          <ShipmentRow id="SHP-9278" origin="LA Distribution" dest="San Diego, CA" progress={100} status="Delivered" eta="Completed" carrier="Coast Freight" weight="3,200 lbs" color="emerald" /> */}
           {logisticData.map((shipment) => {
-            // 1. Determine color based on status
-            const statusColor = 
-              shipment.order_status === 'Delivered' ? 'emerald' : 
-              shipment.order_status === 'Delayed' ? 'rose' : 'blue';
+            const startTime = new Date(shipment.order_date).getTime();
+            const currentTime = new Date().getTime();
+            const deliveryWindow = 7 * 24 * 60 * 60 * 1000; 
+            
+            // 1. Initial raw calculation
+            let dynamicProgress = Math.floor(((currentTime - startTime) / deliveryWindow) * 100);
+            
+            // 2.This to fake progress for old data
+            if (dynamicProgress >= 100 && shipment.order_status !== 'Delivered') {
+              dynamicProgress = 60 + (shipment.order_id % 35); 
+            }
 
-            // 2. Handle null/missing data with fallbacks
-            const carrierName = shipment.carrier || "Unassigned";
-            const progressValue = shipment.progress || 45; // Default percentage if API is missing it
-            const etaValue = shipment.eta || "2 Days";
-            const weightValue = shipment.weight || "1,200 lbs";
+            // 3. Status Overrides (Forces the bar to 0% or 100%)
+            if (shipment.order_status === 'Packed') {
+              dynamicProgress = 0; 
+            } else if (shipment.order_status === 'Delivered') {
+              dynamicProgress = 100; 
+            }
+
+            // --- THE FIX: ETA CALCULATION ---
+            // 4. Calculate hours remaining based directly on the progress bar percentage
+            const totalHours = 7 * 24; // 168 total hours in your 7-day window
+            const hoursRemaining = Math.floor((totalHours * (100 - dynamicProgress)) / 100);
+
+            // 5. Apply context-aware ETA text based on status
+            let safeEta = "";
+            if (shipment.order_status === 'Delivered') {
+              safeEta = "Completed";
+            } else if (shipment.order_status === 'Packed') {
+              safeEta = "Pending Dispatch"; 
+            } else {
+              // Only 'In Transit' items will show remaining hours
+              safeEta = hoursRemaining > 0 ? `${hoursRemaining}h remaining` : "Arriving Soon";
+            }
+
+            const actualStatus = shipment.order_status;
+            const statusColor = actualStatus === 'Delivered' ? 'emerald' : (actualStatus === 'In Transit' ? 'blue' : 'amber');
 
             return (
               <ShipmentRow
                 key={shipment.order_id}
-                id={`#SHP-${shipment.order_id}`} // Format ID nicely
-                origin={shipment.origin}
-                dest={shipment.destination}
-                status={shipment.order_status}
-                carrier={carrierName}
-                
-                // 3. PASS THE MISSING PROPS
-                color={statusColor}        // <--- Critical for colors to work
-                progress={progressValue}   // <--- Critical for progress bar
-                eta={etaValue}             
-                weight={weightValue}       
+                id={`#SHP-${shipment.order_id}`}
+                origin={shipment.origin || "Nexus Hub"}
+                dest={shipment.destination || "Destination"}
+                status={actualStatus}
+                carrier={shipment.carrier || "N/A"}
+                color={statusColor}
+                progress={dynamicProgress} 
+                eta={safeEta} // using the ETA calculation
+                weight={shipment.weight}
               />
             );
           })}
+        </div>
+      </div>
+      {/* Pagination Footer */}
+      <div className="flex justify-between items-center mt-6 px-2">
+        <p className="text-xs text-zinc-500">
+          Showing page <span className="text-white font-bold">{currentPage}</span> of <span className="text-white font-bold">{totalPages}</span>
+        </p>
+        <div className="flex gap-2">
+          <button 
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(prev => prev - 1)}
+            className="px-3 py-1 bg-zinc-800 text-xs text-zinc-300 rounded hover:bg-zinc-700 disabled:opacity-50 transition-all"
+          >
+            Previous
+          </button>
+          <button 
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(prev => prev + 1)}
+            className="px-3 py-1 bg-zinc-800 text-xs text-zinc-300 rounded hover:bg-zinc-700 disabled:opacity-50 transition-all"
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>
@@ -170,16 +226,25 @@ const StatCard = ({ icon, label, value, trend, color }) => (
 );
 
 const ShipmentRow = ({ id, origin, dest, progress, status, eta, carrier, weight, color }) => {
-  const barColor = { blue: 'bg-blue-500', rose: 'bg-rose-500', emerald: 'bg-emerald-500' }[color];
-  const textColor = { blue: 'text-blue-400', rose: 'text-rose-400', emerald: 'text-emerald-400' }[color];
-  const bgColor = { blue: 'bg-blue-500/10', rose: 'bg-rose-500/10', emerald: 'bg-emerald-500/10' }[color];
+  const barColor = { blue: 'bg-blue-500', rose: 'bg-rose-500', emerald: 'bg-emerald-500', amber: 'bg-amber-500' }[color];
+  const textColor = { blue: 'text-blue-400', rose: 'text-rose-400', emerald: 'text-emerald-400', amber: 'text-amber-400' }[color];
+  const bgColor = { blue: 'bg-blue-500/10', rose: 'bg-rose-500/10', emerald: 'bg-emerald-500/10', amber: 'bg-amber-500/10' }[color];
 
   return (
     <div className="p-4 hover:bg-white/[0.02] transition-colors grid grid-cols-1 md:grid-cols-5 gap-4 items-center group">
-      {/* Column 1: Shipment ID */}
-      <div>
-        <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Shipment ID</p>
-        <p className="text-emerald-500 font-mono text-sm font-bold">{id}</p>
+      <div className="flex items-center gap-3">
+        <div>
+          <p className="text-[10px] text-zinc-500 font-bold uppercase mb-1">Shipment ID</p>
+          <div className="flex items-center gap-2">
+            <p className="text-emerald-500 font-mono text-sm font-bold">{id}</p>
+            {status !== 'Delivered' && (
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Column 2: Route */}

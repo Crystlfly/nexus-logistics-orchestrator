@@ -54,7 +54,6 @@ export default function FleetModal({isOpen, onCloseAction, initialToBeUpdatedDat
         setStatus('loading');
         setErrorMessage('');
     
-        const token = localStorage.getItem('nexus_token');
 
         // 1. Create a cleaned payload object
         // We convert the form strings to Integers so the Database doesn't complain
@@ -75,11 +74,19 @@ export default function FleetModal({isOpen, onCloseAction, initialToBeUpdatedDat
             const response = await fetch(endpoint, {
                 method: method,
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
+                credentials: 'include',
                 body: JSON.stringify(payload) // <--- Send 'payload', NOT 'formData'
             });
+
+            if (response.status === 401 || response.status === 403) {
+                alert("Your session has expired. Please log in again.");
+                localStorage.removeItem('nexus_user_role');
+                localStorage.removeItem('nexus_expires_at');
+                window.location.href = '/login';
+                return; 
+            }
     
             if (response.ok) {
                 setStatus('success');
@@ -205,7 +212,6 @@ export default function FleetModal({isOpen, onCloseAction, initialToBeUpdatedDat
                                         <option value="In Transit">In Transit</option>
                                         <option value="Idle">Idle / Parked</option>
                                         <option value="Maintenance">Maintenance</option>
-                                        <option value="Charging">Refueling/Charging</option>
                                     </select>
                                 </div>
                             </div>

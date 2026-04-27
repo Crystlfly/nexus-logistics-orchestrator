@@ -26,15 +26,23 @@ router.post('/api/login', async (req, res) => {
             const isMatch = await bcrypt.compare(password, user.PasswordHash);
 
             if (isMatch) {
-                // Login Success
+                const token = jwt.sign(
+                    { id: user.UserId, name: user.FullName, role: user.Role },
+                    process.env.JWT_SECRET,
+                    { expiresIn: '24h' }
+                );
+                res.cookie('nexus_token', token, {
+                    httpOnly: true, // CRITICAL: Hides cookie from malicious JavaScript
+                    secure: process.env.NODE_ENV === 'production', // Use true if on HTTPS
+                    sameSite: 'lax', // Protects against CSRF attacks
+                    maxAge: 24 * 60 * 60 * 1000 // 24 hours in milliseconds
+                });
                 res.status(200).json({ 
                     success: true, 
                     message: "Login Successful",
-                    token: jwt.sign(
-                        { id: user.UserId, name: user.FullName, role: user.Role },
-                        process.env.JWT_SECRET,
-                        { expiresIn: '1h' }
-                    )
+                    userRole: user.Role,
+                    expiresAt: Date.now() + (24 * 60 * 60 * 1000)
+                    
                 });
             } else {
                 res.status(401).json({ success: false, message: "Invalid Credentials" });

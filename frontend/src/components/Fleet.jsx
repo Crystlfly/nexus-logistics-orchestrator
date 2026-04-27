@@ -2,7 +2,8 @@ import React from 'react';
 import { useEffect, useState } from 'react';
 import { Truck, MapPin, Gauge, Fuel, Calendar, Plus, Search, Loader2, MoreVertical, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react';
 import FleetModal from './FleetModal';
-import {getRoleFromToken} from './getRoleFromToken';
+import CustomSelect from './CustomSelect'; 
+
 
 const Fleet = () => {
   const [fleetData, setFleetData] = useState([]);
@@ -13,7 +14,8 @@ const Fleet = () => {
   
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0); 
+  const [pageInput, setPageInput] = useState(currentPage);
+  const [totalPages, setTotalPages] = useState(1); 
   const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 10;
 
@@ -27,7 +29,6 @@ const Fleet = () => {
 
 
   const fetchFleet = async () => {
-    setIsLoading(true);
     try {
       const params = new URLSearchParams({
         page: currentPage,
@@ -37,7 +38,19 @@ const Fleet = () => {
         status: statusFilter !== "All Statuses" ? statusFilter : ""
       });
 
-      const response = await fetch(`http://localhost:3000/api/fleet?${params}`);
+      const response = await fetch(`http://localhost:3000/api/fleet?${params}`,{
+        headers: {
+          'Content-Type': 'application/json' 
+        },
+        credentials: 'include'
+      });
+      if (response.status === 401 || response.status === 403) {
+        alert("Your session has expired. Please log in again.");
+        localStorage.removeItem('nexus_user_role');
+        localStorage.removeItem('nexus_expires_at');
+        window.location.href = '/login';
+        return; 
+      }
       const data = await response.json();
 
       if (data.status === 200) {
@@ -45,7 +58,6 @@ const Fleet = () => {
         setTotalPages(data.pagination.totalPages);
         setTotalItems(data.pagination.totalItems);
 
-        // FIX: Map the backend names to your frontend names
         if (data.stats) {
           setStats({
             total: data.stats.total,
@@ -64,7 +76,6 @@ const Fleet = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-        // Reset to page 1 if filters change
         if (currentPage !== 1 && (searchQuery || typeFilter !== "All Types" || statusFilter !== "All Statuses")) {
             setCurrentPage(1);
         } else {
@@ -84,18 +95,54 @@ const Fleet = () => {
     if (currentPage > 1) setCurrentPage(prev => prev - 1);
   };
 
+  useEffect(() => {
+    setPageInput(currentPage);
+  }, [currentPage]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      let value = parseInt(pageInput);
+
+      if (isNaN(value)) return;
+      if (value < 1) value = 1;
+      if (value > totalPages) value = totalPages;
+
+      if (value !== currentPage) {
+        setCurrentPage(value);
+      }
+    }, 800); // debounce delay
+
+    return () => clearTimeout(timer);
+  }, [pageInput]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      let value = parseInt(pageInput);
+
+      if (!value) value = 1;
+      if (value < 1) value = 1;
+      if (value > totalPages) value = totalPages;
+
+      setCurrentPage(value);
+    }
+  };
+
   const handleDelete = async (id) => {
       if (window.confirm("Are you sure you want to delete this Vehicle?")) {
-        try {
-          const token = localStorage.getItem('nexus_token'); 
-  
+        try {  
           const response = await fetch(`http://localhost:3000/api/deleteFleet/${id}`, {
             method: 'DELETE',
             headers: {
-              'Authorization': `Bearer ${token}`, 
-              'Content-Type': 'application/json'
-            }
+              'Content-Type': 'application/json' 
+            },
+            credentials: 'include'
           });
+          if (response.status === 401 || response.status === 403) {
+            alert("Your session has expired. Please log in again.");
+            localStorage.removeItem('nexus_user_role');
+            localStorage.removeItem('nexus_expires_at');
+            window.location.href = '/login';
+            return; 
+          }
   
           if (response.ok) {
             fetchFleet(); 
@@ -151,9 +198,15 @@ const Fleet = () => {
       {/* Fleet Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <FleetStat icon={<Truck />} label="Total Vehicles" value={totalItems} trend="+4 new" color="emerald" />
-      <FleetStat icon={<MapPin />} label="Active on Routes" value={stats.transit} trend={fleetData.length > 0 
-      ? (fleetData.filter(v => v.status === "In-Transit").length / fleetData.length * 100).toFixed(1) + "%" 
-      : "0%"} color="emerald" />
+      <FleetStat 
+        icon={<MapPin />} 
+        label="Active on Routes" 
+        value={fleetData.filter(v => v.status === "In Transit").length} 
+        trend={fleetData.length > 0 
+            ? (fleetData.filter(v => v.status === "In Transit").length / fleetData.length * 100).toFixed(1) + "%" 
+            : "0%"} 
+        color="emerald" 
+      />
         <FleetStat icon={<Gauge />} label="Idle / Available" value={stats.idle} trend={fleetData.length > 0
         ? (fleetData.filter(v => v.status === "Idle").length / fleetData.length * 100).toFixed(1) + "%" 
         : "0%"} color="emerald" />
@@ -168,31 +221,20 @@ const Fleet = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
           <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search by vehicle ID, driver, or location..." className="w-full bg-[#0B0E14] border border-zinc-800 rounded-lg py-2.5 pl-10 pr-4 text-sm text-zinc-300 focus:outline-none focus:border-emerald-500/50" />
         </div>
-        <select 
-          value={typeFilter} 
-          onChange={(e) => setTypeFilter(e.target.value)} 
-          className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-4 text-sm text-zinc-300 outline-none"
-        >
-          <option value="All Types">All Types</option>
-          {/* Ensure these values match your DB exactly (Case Sensitive!) */}
-          <option value="Truck">Truck</option>
-          <option value="Van">Van</option>
-          <option value="Bike">Bike</option>
-          <option value="Lorry">Lorry</option>
-        </select>
-
-        <select 
-          value={statusFilter} 
-          onChange={(e) => setStatusFilter(e.target.value)} 
-          className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-4 text-sm text-zinc-300 outline-none"
-        >
-          <option value="All Statuses">All Statuses</option>
-          {/* CRITICAL: Does your DB use "In-Transit" or "In Transit"? 
-              I am using "In-Transit" (hyphen) to match your backend SQL. */}
-          <option value="In-Transit">In-Transit</option>
-          <option value="Idle">Idle</option>
-          <option value="Maintenance">Maintenance</option>
-        </select>
+        <CustomSelect 
+          value={typeFilter}
+          onChange={setTypeFilter}
+          options={[
+            'All Types', 'Refrigerated Truck', 'Cargo Van', 'Heavy Duty Semi'
+          ]}
+        />
+        <CustomSelect 
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={[
+            'All Statuses', 'In Transit', 'Idle', 'Maintenance'
+          ]}
+        />
       </div>
 
       {/* Fleet List */}
@@ -222,8 +264,18 @@ const Fleet = () => {
             >
                 <ChevronLeft size={14} /> Previous
             </button>
-            <span className="text-xs text-zinc-500 font-medium">Page <span className="text-white">{currentPage}</span> of {totalPages}</span>
-            <button 
+            <span className="text-xs text-zinc-500 font-medium flex items-center gap-2">
+              Page
+              <input
+                type="text"
+                value={pageInput}
+                  onChange={(e) => setPageInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="w-12 text-center bg-[#0F1219] border border-zinc-800 rounded px-2 py-1 text-white focus:border-emerald-500/50 outline-none"
+                />
+                of {totalPages}
+            </span>            
+          <button 
                 onClick={handleNextPage}
                 disabled={currentPage === totalPages || isLoading}
                 className="flex items-center gap-1 text-xs font-bold text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -250,7 +302,7 @@ const FleetStat = ({ icon, label, value, trend, color }) => (
 );
 
 const FleetRow = ({ vehicleData, isOpen, onToggle, onDelete, onUpdate }) => {
-  const userRole = getRoleFromToken(localStorage.getItem('nexus_token'));
+  const userRole = (localStorage.getItem('userRole'));
   const { 
     vehicle_id, 
     vehicle_type, 
@@ -316,7 +368,7 @@ const FleetRow = ({ vehicleData, isOpen, onToggle, onDelete, onUpdate }) => {
       {/* Column 6: Status & Menu */}
       <div className="flex items-center justify-end gap-3">
         <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${
-          status === 'In-Transit' ? 'text-blue-400 border-blue-500/20 bg-blue-500/10' : 
+          status === 'In Transit' ? 'text-blue-400 border-blue-500/20 bg-blue-500/10' : 
           status === 'Maintenance' ? 'text-rose-400 border-rose-500/20 bg-rose-500/10' : 
           'text-emerald-400 border-emerald-500/20 bg-emerald-500/10'}`}>
           {status}

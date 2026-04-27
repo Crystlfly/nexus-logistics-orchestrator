@@ -1,36 +1,64 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import ZonesModal, { ZoneCard } from './ZonesModal'; // Importing Modal and the shared Card
+import ZonesModal, { ZoneCard } from './ZonesModal';
 
 const Zones = () => {
   const [zoneData, setZoneData] = useState([]);
   const [showZonesModal, setShowZonesModal] = useState(false);
+  const [currPage, setCurrPage]=useState(1);
+  const [totalPages, setTotalPages] = useState(0); 
+  const itemsPerPage=150;  
 
   // --- FETCH ZONES DATA ---
   useEffect(() => {
     const fetchZones = async () => {
       try {
-        const response = await fetch(`http://localhost:3000/api/zones`);
+        const params = new URLSearchParams({
+          page: currPage,
+          limit: itemsPerPage,
+        });
+        const response = await fetch(`http://localhost:3000/api/zones?${params}`, {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+        if (response.status === 401 || response.status === 403) {
+          alert("Your session has expired. Please log in again.");
+          localStorage.removeItem('nexus_user_role');
+          localStorage.removeItem('nexus_expires_at');
+          window.location.href = '/login';
+          return; 
+        }
         if (!response.ok) throw new Error('Failed to fetch zone data');
+        
         const json = await response.json();
         const rawData = json.data || json;
         
-        const mappedData = rawData.map(row => ({
-          name: row.zone_name,                          
-          location: `${row.warehouse_name || 'Unknown'} • Zone ${row.zone_id}`,
-          items: row.current_occupancy,
-          capacity: row.capacity_limit,
-          temp: row.temperature,
-          occupancy: Math.round((row.current_occupancy / row.capacity_limit) * 100),
-          type: row.zone_type,
-          alert: (row.current_occupancy / row.capacity_limit) > 0.9
-        }));
+        // values mapping
+        const mappedData = rawData.map(row => {
+          const cap = row.capacity_limit || 0;
+          const occ = row.current_occupancy || 0;
+          const pct = cap > 0 ? ((occ / cap) * 100).toFixed(1) : 0;
+          
+          return {
+            name: row.zone_name,                          
+            location: `${row.warehouse_name || 'Unknown'} • Zone ${row.zone_id}`,
+            volume: occ,       // Raw volume number for the display box
+            capacity: cap,     // Raw capacity number
+            temp: row.temperature,
+            percentage: pct,   // Calculated percentage for the progress bar
+            type: row.zone_type,
+            alert: pct > 85    // Alert triggers if over 85% full
+          };
+        });
+        
         setZoneData(mappedData);
       } catch (err) {
         console.error("Fetch Zones Error:", err);
       }
     };
     fetchZones();
-  }, []); 
+  }, [currPage]); 
 
   // --- DASHBOARD LOGIC: TOP 6 CRITICAL ---
   const dashboardZones = useMemo(() => {
@@ -38,35 +66,34 @@ const Zones = () => {
       .sort((a, b) => {
         if (a.alert && !b.alert) return -1; // Alerts first
         if (!a.alert && b.alert) return 1;
-        return b.occupancy - a.occupancy; // Then highest occupancy
+        return Number(b.percentage) - Number(a.percentage); // Then sort by highest %
       })
-      .slice(0, 6);
+      .slice(0, 4);
   }, [zoneData]);
 
   return (
     <>
-      {/* The Modal (Only shown when state is true) */}
       {showZonesModal && (
         <ZonesModal 
-          data={zoneData} 
+          data={zoneData}
           onClose={() => setShowZonesModal(false)} 
         />
       )}
 
       {/* The Dashboard Section */}
       <div className="space-y-4 h-full">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-sm font-black uppercase tracking-widest text-white">Critical Zones Overview</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-sm font-black uppercase tracking-widest text-white">Zones Overview</h3>
           
           <button 
             onClick={() => setShowZonesModal(true)}
             className="text-[10px] font-bold text-emerald-500 hover:text-emerald-400 uppercase tracking-tighter"
           >
-            View All Zones ({zoneData.length})
+            View All Zones 
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
           {dashboardZones.map((zone, idx) => (
             <ZoneCard key={idx} {...zone} />
           ))}

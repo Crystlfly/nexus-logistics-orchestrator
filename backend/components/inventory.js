@@ -7,11 +7,11 @@ import {authenticateToken} from '../middleware/auth.js';
 const router=Router();
 const config = dbconfigSetup;
 
-router.get("/api/inventory", async (req, res) => {
+router.get("/api/inventory", authenticateToken, async (req, res) => {
     try {
         const pool = await sql.connect(config);
         
-        // 1. Extract Query Parameters (with defaults)
+        // 1. Extract Query Parameters
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const offset = (page - 1) * limit;
@@ -21,12 +21,11 @@ router.get("/api/inventory", async (req, res) => {
         const status = req.query.status || "";
 
         // 2. Build the Dynamic WHERE Clause
-        // We start with 1=1 so we can easily append "AND ..." conditions
         let whereClause = "WHERE 1=1";
-        const request = pool.request(); // Create request object to bind parameters
+        const request = pool.request(); 
 
         if (search) {
-            whereClause += " AND (sku LIKE @search OR name LIKE @search OR warehouse_location LIKE @search)";
+            whereClause += " AND (sku LIKE @search OR name LIKE @search OR category LIKE @search)";
             request.input("search", sql.VarChar, `%${search}%`);
         }
 
@@ -40,7 +39,7 @@ router.get("/api/inventory", async (req, res) => {
             request.input("status", sql.VarChar, status);
         }
 
-        // 3. RUN THREE QUERIES (Ideally using Promise.all for speed)
+        // 3. RUN THREE QUERIES 
         
         // Query A: Get the actual 10 rows for the table
         const dataQuery = `
@@ -54,7 +53,6 @@ router.get("/api/inventory", async (req, res) => {
         const countQuery = `SELECT COUNT(*) as total FROM Products ${whereClause} AND IsDeleted = 0`; // Assuming you have a soft delete mechanism
 
         // Query C: Get global stats (For the cards at the top)
-        // Note: Usually stats show the whole warehouse, so we don't apply the 'whereClause' here
         const statsQuery = `
             SELECT 
                 COUNT(*) as total,
@@ -65,11 +63,9 @@ router.get("/api/inventory", async (req, res) => {
             WHERE IsDeleted = 0
         `;
 
-        // Bind pagination params
         request.input("offset", sql.Int, offset);
         request.input("limit", sql.Int, limit);
 
-        // Execute all queries in parallel
         const [dataResult, countResult, statsResult] = await Promise.all([
             request.query(dataQuery),
             pool.request().input("search", sql.VarChar, `%${search}%`) // Re-bind for independent queries if needed, or reuse object carefully
@@ -82,7 +78,6 @@ router.get("/api/inventory", async (req, res) => {
         const totalItems = countResult.recordset[0].total;
         const totalPages = Math.ceil(totalItems / limit);
 
-        // 4. Send the formatted response
         res.json({
             status: 200,
             data: dataResult.recordset,

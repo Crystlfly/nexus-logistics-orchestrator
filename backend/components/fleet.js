@@ -7,7 +7,7 @@ import {authenticateToken} from '../middleware/auth.js';
 const config = dbconfigSetup;
 const router = Router();
 
-router.get('/api/fleet', async (req, res) => {
+router.get('/api/fleet', authenticateToken, async (req, res) => {
     try{
         const pool= await sql.connect(config);
 
@@ -80,7 +80,7 @@ router.get('/api/fleet', async (req, res) => {
             createRequest()
                 .input("offset", params.offset.type, params.offset.value)
                 .input("limit", params.limit.type, params.limit.value)
-                .query(dataQuery), // FIX: Just pass dataQuery. Do NOT add whereClause again.
+                .query(dataQuery), 
             
             createRequest().query(countQuery),
             

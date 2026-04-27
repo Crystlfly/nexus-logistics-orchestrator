@@ -8,7 +8,7 @@ import {authenticateToken} from '../middleware/auth.js';
 const router=Router();
 const config = dbconfigSetup;
 
-router.get("/api/warehouses", async(req,res)=>{
+router.get("/api/warehouses", authenticateToken, async(req,res)=>{
     try{
         const pool=await sql.connect(config);
         const page = parseInt(req.query.page) || 1;
@@ -69,12 +69,12 @@ router.get("/api/warehouses", async(req,res)=>{
     }
 });
 
-router.get("/api/zones", async(req,res)=>{
+router.get("/api/zones", authenticateToken, async(req,res)=>{
     try{
         const pool=await sql.connect(config);
 
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 50;
+        const limit = parseInt(req.query.limit) || 200;
         const offset = (page - 1) * limit;
 
         const search = req.query.search || "";

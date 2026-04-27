@@ -34,7 +34,6 @@ const Users = () => {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('nexus_token');
       const params = new URLSearchParams({
         page: currentPage,
         limit: itemsPerPage,
@@ -43,8 +42,19 @@ const Users = () => {
       });
 
       const response = await fetch(`http://localhost:3000/api/users?${params}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       });
+
+      if (response.status === 401 || response.status === 403) {
+        alert("Your session has expired. Please log in again.");
+        localStorage.removeItem('nexus_user_role');
+        localStorage.removeItem('nexus_expires_at');
+        window.location.href = '/login';
+        return; 
+      }
 
       if (!response.ok) {
         setUsersData([]); // Force it to be an empty array
@@ -88,14 +98,21 @@ const Users = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to remove this user access?")) {
       try {
-        const token = localStorage.getItem('nexus_token'); 
         const response = await fetch(`http://localhost:3000/api/deleteUser/${id}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${token}`, 
             'Content-Type': 'application/json'
-          }
+          },
+          credentials: 'include',
         });
+
+        if (response.status === 401 || response.status === 403) {
+          alert("Your session has expired. Please log in again.");
+          localStorage.removeItem('nexus_user_role');
+          localStorage.removeItem('nexus_expires_at');
+          window.location.href = '/login';
+          return; 
+        }
 
         if (response.ok) {
           fetchUsers(); 
@@ -123,7 +140,6 @@ const Users = () => {
   };
 
   const handleExport=async ()=>{
-    const token=localStorage.getItem("nexus_token");
     const header=["FullName", "Email", "Role"];
     try{
       const params = new URLSearchParams({
@@ -134,8 +150,18 @@ const Users = () => {
     });
 
       const response = await fetch(`http://localhost:3000/api/users?${params}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
       });
+      if (response.status === 401 || response.status === 403) {
+        alert("Your session has expired. Please log in again.");
+        localStorage.removeItem('nexus_user_role');
+        localStorage.removeItem('nexus_expires_at');
+        window.location.href = '/login';
+        return; 
+      }
       const data=await response.json();
       
       if (Array.isArray(data) && data.length > 0) {
@@ -201,7 +227,7 @@ const Users = () => {
             type="text" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by name, email, or ID..." 
+            placeholder="Search by name, email, or role..." 
             className="w-full bg-[#0B0E14] border border-zinc-800 rounded-lg py-2.5 pl-10 pr-4 text-sm text-zinc-300 focus:outline-none focus:border-emerald-500/50 transition-colors"
           />
         </div>

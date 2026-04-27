@@ -1,4 +1,4 @@
-import React, { useState, useEffect} from 'react';
+import React, { useState, useEffect, useMemo} from 'react';
 import {
   ShoppingCart,
   Clock,
@@ -17,25 +17,19 @@ import {
   ChevronRight,
   Loader2
 } from "lucide-react";
-
-// Extended sample data to match the visual design
-// const rawOrdersData = [
-//   { order_id: 8392, customer_name: 'TechCorp Industries', product_name: 'Industrial Bearings (Pack of 500)', quantity: 500, value: '$24,500', order_date: '2026-02-20T14:32:00', priority_level: 3, order_status: 'Delivered', destination_address: 'Austin, TX', warehouse_name: 'Dallas Distribution Center', assigned_vehicle_id: 9281 },
-//   { order_id: 8391, customer_name: 'MedSupply Corp', product_name: 'Medical Supply Package', quantity: 1200, value: '$67,800', order_date: '2026-02-20T13:15:00', priority_level: 2, order_status: 'Shipped', destination_address: 'Miami, FL', warehouse_name: 'Miami Port', assigned_vehicle_id: 8832 },
-//   { order_id: 8390, customer_name: 'AutoParts Direct', product_name: 'Automotive Parts Assembly', quantity: 350, value: '$89,200', order_date: '2026-02-20T12:48:00', priority_level: 1, order_status: 'Processing', destination_address: 'Detroit, MI', warehouse_name: 'Chicago Central', assigned_vehicle_id: null },
-//   { order_id: 8389, customer_name: 'Construction Pro LLC', product_name: 'Construction Materials Bundle', quantity: 2500, value: '$156,000', order_date: '2026-02-20T11:22:00', priority_level: 3, order_status: 'Shipped', destination_address: 'San Diego, CA', warehouse_name: 'LA Distribution', assigned_vehicle_id: 7731 },
-// ];
+import CustomSelect from './CustomSelect'; 
 
 export default function OrderManagement() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [rawOrdersData, setRawOrdersData] = useState([]);
-  const [isLoading, setIsLoading]= useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0); 
+  const [pageInput, setPageInput] = useState(currentPage);
+  const [totalPages, setTotalPages] = useState(1); 
   const [searchQueryOrder, setSearchQueryOrder] = useState("");
-  const [statusFilterOrder, setStatusFilterOrder] = useState("");
-  const [priorityFilterOrder, setPriorityFilterOrder] = useState("");
+  const [statusFilterOrder, setStatusFilterOrder] = useState("All Statuses");
+  const [priorityFilterOrder, setPriorityFilterOrder] = useState("All Priorities");
   const itemsPerPage = 10;
 
   useEffect(()=>{
@@ -45,11 +39,23 @@ export default function OrderManagement() {
           page: currentPage,
           limit: itemsPerPage,
           search: searchQueryOrder,
-          status: statusFilterOrder ,
-          priority: priorityFilterOrder
+          status: statusFilterOrder === "All Statuses" ? "" : statusFilterOrder,
+          priority: priorityFilterOrder === "All Priorities"?"" : priorityFilterOrder=== "Low" ? 1 : priorityFilterOrder === "Normal" ? 2 : 3
         });
 
-        const response = await fetch(`http://localhost:3000/api/orders?${params}`);
+        const response = await fetch(`http://localhost:3000/api/orders?${params}`,{
+          headers: { 
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+        if (response.status === 401 || response.status === 403) {
+          alert("Your session has expired. Please log in again.");
+          localStorage.removeItem('nexus_user_role');
+          localStorage.removeItem('nexus_expires_at');
+          window.location.href = '/login';
+          return; 
+        }
         if(!response.ok){
           setRawOrdersData([]);
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -62,9 +68,9 @@ export default function OrderManagement() {
       } catch (error) {
         console.error("Failed to fetch orders:", error);
         setRawOrdersData([]);
-      }finally{
-        setIsLoading(false);
-      }
+      }finally {
+      setIsLoading(false);
+    }
     }
     const timer = setTimeout(() => {
         fetchOrders();
@@ -75,7 +81,77 @@ export default function OrderManagement() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQueryOrder, statusFilterOrder, priorityFilterOrder]);
+
+  useEffect(() => {
+      setPageInput(currentPage);
+    }, [currentPage]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      let value = parseInt(pageInput);
+  
+      if (isNaN(value)) return;
+      if (value < 1) value = 1;
+      if (value > totalPages) value = totalPages;
+  
+      if (value !== currentPage) {
+        setCurrentPage(value);
+      }
+    }, 800); // debounce delay
+  
+    return () => clearTimeout(timer);
+  }, [pageInput]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      let value = parseInt(pageInput);
+
+      if (!value) value = 1;
+      if (value < 1) value = 1;
+      if (value > totalPages) value = totalPages;
+
+      setCurrentPage(value);
+    }
+  };
    
+  // Function to handle status updates with optimistic UI changes
+  const handleStatusUpdate = async (orderId, newStatus) => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/orders/${orderId}/status`, {
+        method: 'PATCH', // or PUT depending on your backend
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ newStatus })
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        alert("Your session has expired. Please log in again.");
+        localStorage.removeItem('nexus_user_role');
+        localStorage.removeItem('nexus_expires_at');
+        window.location.href = '/login';
+        return; 
+      }
+
+      if (response.ok) {
+        // 1. Update the local state so the UI changes instantly without a refresh
+        setRawOrdersData(prevData => 
+          prevData.map(order => 
+            order.order_id === orderId ? { ...order, order_status: newStatus } : order
+          )
+        );
+        
+        // 2. If the modal is open, update the selected order state too
+        if (selectedOrder && selectedOrder.order_id === orderId) {
+          setSelectedOrder(prev => ({ ...prev, order_status: newStatus }));
+        }
+      } else {
+        console.error("Failed to update status");
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+    }
+  };
 
 
   // Helper function to format priority tags matching the new aesthetic
@@ -91,15 +167,69 @@ export default function OrderManagement() {
   // Helper function to format status tags matching Logistics logic
   const getStatusBadge = (status) => {
     let color = '';
-    if (status === 'Processing' || status === 'Pending') color = 'text-orange-500 bg-orange-500/10 border-orange-500';
-    else if (status === 'Shipped' || status === 'Dispatched') color = 'text-blue-500 bg-blue-500/10 border-blue-500';
-    else if (status === 'Delivered') color = 'text-emerald-500 bg-emerald-500/10 border-emerald-500';
-    else color = 'text-zinc-500 bg-zinc-500/10 border-zinc-500';
-
+    if (status === 'Pending' ) {
+      color = 'text-orange-500 bg-orange-500/10 border-orange-500';
+    } else if (status === 'Packed') {
+      color = 'text-purple-500 bg-purple-500/10 border-purple-500'; // New Purple color for Packed!
+    } else if (status === 'shipped' || status === 'dispatched') {
+      color = 'text-blue-500 bg-blue-500/10 border-blue-500';
+    } else if (status === 'delivered') {
+      color = 'text-emerald-500 bg-emerald-500/10 border-emerald-500';
+    } else {
+      color = 'text-zinc-500 bg-zinc-500/10 border-zinc-500';
+    }
     return <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-current ${color}`}>{status}</span>;
   };
 
-  if (isLoading) return <div className="min-h-screen bg-[#0B0E14] flex items-center justify-center text-zinc-500"><Loader2 className="animate-spin mr-2" /> Loading...</div>;
+  // --- DYNAMIC KPI CALCULATIONS ---
+  const stats = useMemo(() => {
+    if (!rawOrdersData || rawOrdersData.length === 0) {
+      return { total: 0, pending: 0, delivered: 0, deliveredPercent: 0, revenue: "$0" };
+    }
+
+    let pending = 0;
+    let delivered = 0;
+    let rawRevenue = 0;
+
+    rawOrdersData.forEach(order => {
+      // 1. Count Statuses
+      const status = order.order_status?.toLowerCase();
+      if (status === 'pending') pending++;
+      if (status === 'delivered') delivered++;
+
+      // 2. Parse Revenue (handles strings like "$24,500" or raw numbers)
+      // Check both TotalValue and value depending on what your DB returns
+      let val = order.TotalValue || order.value || 0; 
+      if (typeof val === 'string') {
+        val = Number(val.replace(/[^0-9.-]+/g, ""));
+      }
+      rawRevenue += (val || 0);
+    });
+
+    // 3. Calculate Percentages & Formatting
+    const deliveredPercent = Math.round((delivered / rawOrdersData.length) * 100);
+    
+    // Format Revenue nicely (e.g. $24.5K or $1.2M)
+    let formattedRevenue = `$${rawRevenue.toLocaleString()}`;
+    if (rawRevenue >= 1000000) {
+      formattedRevenue = `$${(rawRevenue / 1000000).toFixed(1)}M`;
+    } else if (rawRevenue >= 1000) {
+      formattedRevenue = `$${(rawRevenue / 1000).toFixed(1)}K`;
+    }
+
+    return {
+      total: rawOrdersData.length,
+      pending,
+      delivered,
+      deliveredPercent,
+      revenue: formattedRevenue
+    };
+  }, [rawOrdersData]);
+
+  if (isLoading && currentPage === 1 && rawOrdersData.length === 0) {
+    return <div className="min-h-screen bg-[#0B0E14] flex items-center justify-center 
+    text-zinc-500"><Loader2 className="animate-spin mr-2" /> Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -128,12 +258,12 @@ export default function OrderManagement() {
             <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-blue-500/10 text-blue-500">
               <ShoppingCart size={20} />
             </div>
-            <span className="text-[10px] font-bold text-emerald-500">+8.2%</span>
+            <span className="text-[10px] font-bold text-emerald-500">Active</span>
           </div>
           <p className="text-[11px] text-zinc-500 uppercase font-bold tracking-tight">Total Orders</p>
           <div className="flex items-end gap-2 mt-1">
-            <h3 className="text-2xl font-bold text-white">12</h3>
-            <span className="text-[10px] text-zinc-600 font-bold mb-1">Last 7 days</span>
+            <h3 className="text-2xl font-bold text-white">{stats.total}</h3>
+            <span className="text-[10px] text-zinc-600 font-bold mb-1">On this page</span>
           </div>
         </div>
 
@@ -143,11 +273,13 @@ export default function OrderManagement() {
             <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-orange-500/10 text-orange-500">
               <Clock size={20} />
             </div>
-            <span className="text-[10px] font-bold text-orange-500">4 active</span>
+            <span className={`text-[10px] font-bold ${stats.pending > 0 ? 'text-orange-500' : 'text-zinc-500'}`}>
+              {stats.pending > 0 ? `${stats.pending} active` : 'All clear'}
+            </span>
           </div>
           <p className="text-[11px] text-zinc-500 uppercase font-bold tracking-tight">Pending Processing</p>
           <div className="flex items-end gap-2 mt-1">
-            <h3 className="text-2xl font-bold text-white">4</h3>
+            <h3 className="text-2xl font-bold text-white">{stats.pending}</h3>
             <span className="text-[10px] text-zinc-600 font-bold mb-1">Requires attention</span>
           </div>
         </div>
@@ -158,12 +290,12 @@ export default function OrderManagement() {
             <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-emerald-500/10 text-emerald-500">
               <CheckCircle size={20} />
             </div>
-            <span className="text-[10px] font-bold text-emerald-500">33%</span>
+            <span className="text-[10px] font-bold text-emerald-500">{stats.deliveredPercent}%</span>
           </div>
           <p className="text-[11px] text-zinc-500 uppercase font-bold tracking-tight">Successfully Delivered</p>
           <div className="flex items-end gap-2 mt-1">
-            <h3 className="text-2xl font-bold text-white">4</h3>
-            <span className="text-[10px] text-zinc-600 font-bold mb-1">This week</span>
+            <h3 className="text-2xl font-bold text-white">{stats.delivered}</h3>
+            <span className="text-[10px] text-zinc-600 font-bold mb-1">Completed</span>
           </div>
         </div>
 
@@ -173,12 +305,12 @@ export default function OrderManagement() {
             <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-purple-500/10 text-purple-500">
               <DollarSign size={20} />
             </div>
-            <span className="text-[10px] font-bold text-emerald-500">+12.4%</span>
+            <span className="text-[10px] font-bold text-emerald-500">Value</span>
           </div>
           <p className="text-[11px] text-zinc-500 uppercase font-bold tracking-tight">Total Revenue</p>
           <div className="flex items-end gap-2 mt-1">
-            <h3 className="text-2xl font-bold text-white">$773K</h3>
-            <span className="text-[10px] text-zinc-600 font-bold mb-1">From active</span>
+            <h3 className="text-2xl font-bold text-white">{stats.revenue}</h3>
+            <span className="text-[10px] text-zinc-600 font-bold mb-1">From active list</span>
           </div>
         </div>
       </div>
@@ -195,24 +327,20 @@ export default function OrderManagement() {
             className="w-full bg-[#0B0E14] border border-zinc-800 rounded-lg py-2 pl-10 pr-4 text-sm text-zinc-300 focus:outline-none focus:border-emerald-500/50"
           />
         </div>
-        <select 
-        value={statusFilterOrder}
-        onChange={(e) => setStatusFilterOrder(e.target.value)}
-        className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-300 outline-none">
-          <option value="">All Statuses</option>
-          <option value="Pending">Pending</option>
-          <option value="Dispatched">Dispatched</option>
-          {/* <option value="Delivered">Delivered</option> */}
-        </select>
-        <select 
+        <CustomSelect 
+          value={statusFilterOrder}
+          onChange={setStatusFilterOrder}
+          options={[
+            'All Statuses', 'Pending', 'Dispatched'
+          ]}
+        />
+        <CustomSelect 
           value={priorityFilterOrder}
-          onChange={(e) => setPriorityFilterOrder(e.target.value)}
-          className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-300 outline-none">
-          <option value="">All Priorities</option>
-          <option value={1}>Low</option>
-          <option value={2}>Normal</option>
-          <option value={3}>High</option>
-        </select>
+          onChange={setPriorityFilterOrder}
+          options={[
+            'All Priorities', 'Low', 'Normal', 'High'
+          ]}
+        />
         <button className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-4 py-2 text-sm text-zinc-300 outline-none hover:bg-zinc-800 transition-colors">
           Date Range
         </button>
@@ -234,7 +362,7 @@ export default function OrderManagement() {
                 <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Product</th>
                 <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Destination</th>
                 <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Qty</th>
-                <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Value</th>
+                {/* <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Value</th> */}
                 <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Priority</th>
                 <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Status</th>
                 <th className="p-4 text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Date/Time</th>
@@ -250,13 +378,13 @@ export default function OrderManagement() {
                       <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400">
                         <User size={12} />
                       </div>
-                      <span className="text-white text-xs font-medium">{order.customer_name}</span>
+                      <span className="text-white text-xs font-medium">{order.customer_name || 'Unknown Customer'}</span>
                     </div>
                   </td>
-                  <td className="p-4 text-zinc-300 text-xs">{order.product_name}</td>
+                  <td className="p-4 text-zinc-300 text-xs">{order.ProductName}</td>
                   <td className="p-4 text-zinc-400 text-xs flex items-center gap-1"><MapPin size={12} /> {order.destination_address}</td>
                   <td className="p-4 text-white text-xs font-bold">{order.quantity}</td>
-                  <td className="p-4 text-emerald-500 text-xs font-bold">{order.value}</td>
+                  {/* <td className="p-4 text-emerald-500 text-xs font-bold">{order.value}</td> */}
                   <td className="p-4">{getPriorityBadge(order.priority_level)}</td>
                   <td className="p-4">{getStatusBadge(order.order_status)}</td>
                   <td className="p-4">
@@ -271,9 +399,17 @@ export default function OrderManagement() {
                     >
                       <Eye size={16} />
                     </button>
-                    <button className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-lg transition" title="Package Details">
-                      <Box size={16} />
-                    </button>
+                    
+                    {/* ONLY show the pack button if the order is Pending */}
+                    {order.order_status === 'Pending' && (
+                      <button 
+                        onClick={() => handleStatusUpdate(order.order_id, 'Packed')}
+                        className="p-1.5 text-orange-500 hover:text-white hover:bg-orange-500 rounded-lg transition border border-orange-500/20" 
+                        title="Mark as Packed"
+                      >
+                        <Box size={16} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -281,7 +417,17 @@ export default function OrderManagement() {
           </table>
           <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-white/[0.02]">
             <button onClick={() => currentPage > 1 && setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="flex items-center gap-1 text-xs font-bold text-zinc-400 hover:text-white disabled:opacity-30"><ChevronLeft size={14} /> Previous</button>
-            <span className="text-xs text-zinc-500 font-medium">Page <span className="text-white">{currentPage}</span> of {totalPages}</span>
+            <span className="text-xs text-zinc-500 font-medium flex items-center gap-2">
+                Page
+                <input
+                  type="text"
+                  value={pageInput}
+                  onChange={(e) => setPageInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="w-12 text-center bg-[#0F1219] border border-zinc-800 rounded px-2 py-1 text-white focus:border-emerald-500/50 outline-none"
+                />
+                of {totalPages}
+              </span> 
             <button onClick={() => currentPage < totalPages && setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className="flex items-center gap-1 text-xs font-bold text-zinc-400 hover:text-white disabled:opacity-30">Next <ChevronRight size={14} /></button>
         </div>
         </div>
@@ -305,9 +451,18 @@ export default function OrderManagement() {
                 <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Order ID</p>
                 <p className="text-emerald-500 font-mono text-sm font-bold">ORD-{selectedOrder.order_id}</p>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Status</p>
-                {getStatusBadge(selectedOrder.order_status)}
+              <div className="text-right flex flex-col items-end">
+                <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Update Status</p>
+                <select 
+                  value={selectedOrder.order_status}
+                  onChange={(e) => handleStatusUpdate(selectedOrder.order_id, e.target.value)}
+                  className="bg-[#0B0E14] border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white font-bold outline-none cursor-pointer hover:border-emerald-500/50 transition-colors"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Packed">Packed</option>
+                  <option value="Shipped">Shipped</option>
+                  <option value="Delivered">Delivered</option>
+                </select>
               </div>
             </div>
 
@@ -320,19 +475,19 @@ export default function OrderManagement() {
             <div className="grid grid-cols-2 gap-4 border-b border-zinc-800 pb-4 mb-4">
               <div>
                 <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Product</p>
-                <p className="text-zinc-300 text-sm font-medium">{selectedOrder.product_name}</p>
+                <p className="text-zinc-300 text-sm font-medium">{selectedOrder.ProductName}</p>
               </div>
               <div>
                 <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Quantity</p>
                 <p className="text-white font-bold">{selectedOrder.quantity}</p>
               </div>
               <div>
-                <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Warehouse</p>
-                <p className="text-zinc-300 text-sm font-medium">{selectedOrder.warehouse_name}</p>
+                <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Warehouse Id</p>
+                <p className="text-emerald-500 font-bold">{selectedOrder.warehouse_id}</p>
               </div>
               <div>
                 <p className="text-[10px] uppercase font-bold text-zinc-500 mb-1">Value</p>
-                <p className="text-emerald-500 font-bold">{selectedOrder.value}</p>
+                <p className="text-emerald-500 font-bold">{selectedOrder.TotalValue}</p>
               </div>
             </div>
 

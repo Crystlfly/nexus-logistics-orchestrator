@@ -1,13 +1,14 @@
 import {Router} from 'express';
 import sql from 'mssql';
 import { createOrder } from '../services/orderService.js';
+import { updateOrderStatus } from '../services/orderService.js';
 import {authenticateToken} from '../middleware/auth.js';
 import dbconfigSetup from '../dbconfigSetup.js';
 
 const config = dbconfigSetup;
 const router = Router();
 
-router.get('/api/orders', async (req, res) => {
+router.get('/api/orders', authenticateToken, async (req, res) => {
     try {
         const pool = await sql.connect(config);
         const page= parseInt(req.query.page) || 1;
@@ -40,12 +41,12 @@ router.get('/api/orders', async (req, res) => {
             whereClause += " AND priority_level = @priority";
         }
 
-        const dataQuery = await createRequest().query(`SELECT * FROM Orders 
+        const dataQuery = await createRequest().query(`SELECT * FROM AllOrdersDetails
             ${whereClause} 
             ORDER BY order_id DESC 
             OFFSET @offset ROWS 
             FETCH NEXT @limit ROWS ONLY`);
-        const countQuery = await createRequest().query(`SELECT COUNT(*) as total FROM Orders ${whereClause}`);
+        const countQuery = await createRequest().query(`SELECT COUNT(*) as total FROM AllOrdersDetails ${whereClause}`);
 
         const totalItems = countQuery.recordset[0].total;
         const totalPages = Math.ceil(totalItems / limit);
@@ -92,4 +93,23 @@ router.post('/api/orders', authenticateToken, async (req, res) => {
         });
     }
 });
+
+router.patch('/api/orders/:id/status', authenticateToken, async (req, res) => {
+    const orderId = parseInt(req.params.id);
+    const { newStatus } = req.body;
+
+    try {
+        await updateOrderStatus(orderId, newStatus);
+        res.status(200).json({
+            status: 200,
+            message: "Order status updated successfully."
+        });
+    } catch (err) {
+        res.status(500).json({
+            status: 500,
+            message: err.message
+        });
+    }
+});
+
 export default router;

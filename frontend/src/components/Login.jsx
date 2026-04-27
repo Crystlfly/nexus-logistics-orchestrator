@@ -19,6 +19,7 @@ const LoginSplit = ({ onLogin, onSignupClick }) => {
       const res=await fetch("http://localhost:3000/api/login",{
         method:"POST",
         headers:{'Content-Type': 'application/json'},
+        credentials: 'include',
         body:JSON.stringify({
           email:formData.email,
           password:formData.password
@@ -26,7 +27,7 @@ const LoginSplit = ({ onLogin, onSignupClick }) => {
       });
       const data=await res.json();
         if(data.success){
-          onLogin(data.token);
+          onLogin(data.userRole, data.expiresAt);
         }else{
           alert("Login failed: "+data.message);
         }
@@ -40,11 +41,12 @@ const LoginSplit = ({ onLogin, onSignupClick }) => {
         const res = await fetch("http://localhost:3000/api/google", {
           method: "POST",
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ token: tokenResponse.access_token })
         });
         const data = await res.json();
         if (data.success) {
-          localStorage.setItem('nexus_token', data.token);
+          onLogin(data.userRole, data.expiresAt);
           window.location.reload(); // Quick way to refresh auth state
         }
       } catch (err) {
@@ -134,7 +136,7 @@ const LoginSplit = ({ onLogin, onSignupClick }) => {
                   Forgot password?</button>
               </div>
               <div className="relative">
-                <input type={eyeToggele?"text":"password"} placeholder="Enter your password" 
+                <input type={eyeToggele?"text":"password"} autoComplete="current-password" placeholder="Enter your password" 
                 value={formData.password}
                 onChange={(e)=> setFormData({...formData, password:e.target.value})}
                 className="w-full bg-[#0B0E14] border border-zinc-800 rounded-xl py-3 px-4 text-sm text-zinc-300 focus:outline-none focus:border-emerald-500/50 transition-all" />

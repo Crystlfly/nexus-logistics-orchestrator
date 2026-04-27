@@ -13,16 +13,25 @@ import google from './google.js';
 import order from './components/order.js';
 import logistic from './components/logistic.js';
 import user from './components/user.js';
+import cookieParser from 'cookie-parser';
+import dashboardService from './components/dashboardService.js';
 
 dotenv.config();
 
 const app = express();
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true                // This flag tells the browser "Yes, I accept cookies!"
+}));
 app.use(express.json());
-app.use(cors());
+
+app.use(cookieParser());
 
 const port = 3000; 
 
 const config = dbconfigSetup;
+
+
 
 app.use(login);
 app.use(signup);
@@ -34,21 +43,21 @@ app.use(google);
 app.use(order);
 app.use(logistic);
 app.use(user);
+app.use(dashboardService);
 
-
-app.get('/api/logistics/dispatch-queue', async (req, res) => {
-    try {
-        let pool = await sql.connect(config);
-        let result = await pool.request().query('SELECT * FROM v_DispatchQueue');
+// app.get('/api/logistics/dispatch-queue', async (req, res) => {
+//     try {
+//         let pool = await sql.connect(config);
+//         let result = await pool.request().query('SELECT * FROM v_DispatchQueue');
         
-        res.json({
-            status: 'success',
-            data: result.recordset
-        });
-    } catch (err) {
-        res.status(500).json({ status: 'error', message: err.message });
-    }
-});
+//         res.json({
+//             status: 'success',
+//             data: result.recordset
+//         });
+//     } catch (err) {
+//         res.status(500).json({ status: 'error', message: err.message });
+//     }
+// });
 
 app.get('/api/logistics/coordinates', async (req, res) => {
     try {
@@ -65,28 +74,33 @@ app.get('/api/logistics/coordinates', async (req, res) => {
 });
 
 // backend/server.js
-app.post('/api/orders', async (req, res) => {
-    const { productId, quantity, customerName, priority } = req.body;
-    try {
-        let pool = await sql.connect(config);
-        // Executing the Stored Procedure you created in Phase Two
-        let result = await pool.request()
-            .input('ProductID', sql.Int, productId)
-            .input('Qty', sql.Int, quantity)
-            .input('CustomerName', sql.NVarChar, customerName)
-            .input('Priority', sql.Int, priority)
-            .execute('OrderProcessing');
+// app.post('/api/orders', async (req, res) => {
+//     const { productId, quantity, customerName, priority } = req.body;
+//     try {
+//         let pool = await sql.connect(config);
+//         // Executing the Stored Procedure you created in Phase Two
+//         let result = await pool.request()
+//             .input('ProductID', sql.Int, productId)
+//             .input('Qty', sql.Int, quantity)
+//             .input('CustomerName', sql.NVarChar, customerName)
+//             .input('Priority', sql.Int, priority)
+//             .execute('OrderProcessing');
         
-        const outcome = result.recordset[0].Result;
+//         const outcome = result.recordset[0].Result;
         
-        if (outcome === 'Order Dispatched') {
-            res.json({ status: 'success', message: outcome });
-        } else {
-            res.status(400).json({ status: 'error', message: outcome });
-        }
-    } catch (err) {
-        res.status(500).json({ status: 'error', message: err.message });
-    }
+//         if (outcome === 'Order Dispatched') {
+//             res.json({ status: 'success', message: outcome });
+//         } else {
+//             res.status(400).json({ status: 'error', message: outcome });
+//         }
+//     } catch (err) {
+//         res.status(500).json({ status: 'error', message: err.message });
+//     }
+// });
+
+app.post('/api/auth/logout', (req, res) => {
+    res.clearCookie('nexus_token'); // Destroys the cookie
+    res.json({ message: "Logged out successfully" });
 });
 
 app.listen(port, () => {

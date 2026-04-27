@@ -4,7 +4,7 @@ import { Package, Zap, Lock, Users, ArrowRight, Eye } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 
 
-const SignupSplit = ({ onLoginClick }) => {
+const SignupSplit = ({ onLoginClick, onLogin }) => {
     const [formData, setFormData]=useState({
         fullname:"",
         email:"",
@@ -57,7 +57,7 @@ const SignupSplit = ({ onLoginClick }) => {
           const data = await res.json();
           if (data.success) {
             // Save token and login user
-            localStorage.setItem('nexus_token', data.token);
+            onLogin(data.userRole, data.expiresAt);
             window.location.reload(); // Quick way to refresh auth state
           }
         } catch (err) {

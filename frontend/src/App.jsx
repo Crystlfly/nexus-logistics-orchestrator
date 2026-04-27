@@ -5,79 +5,70 @@ import Logistics from './components/Logistics.jsx';
 import Inventory from './components/Inventory';
 import Fleet from './components/Fleet.jsx';
 import WarehouseManagement from './components/warehouse.jsx';
+import Zones from './components/Zones.jsx';
 import User from './components/User.jsx';
 import Signup from './components/Signup.jsx';
 import Login from './components/Login.jsx';
 import NexusSplash from './components/NexusSplash.jsx';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'; 
 import ResetPasswordPage from './components/ResetPassword.jsx';
 import { jwtDecode } from 'jwt-decode';
 import OrderModal from './components/OrderModal.jsx';
-import {getRoleFromToken} from './components/getRoleFromToken';
 
 import { useState, useEffect } from 'react';
-import {
-  Package,
-  AlertTriangle,
-  Truck,
-  Activity,
-  Plus
-} from "lucide-react";
+import { Package, AlertTriangle, Truck, Activity, Plus } from "lucide-react";
 
-// const WAREHOUSE_POINTS = [
-//   { lat: 32.7767, lng: -96.7970, name: "Dallas DC", status: "Active" },
-//   { lat: 25.7617, lng: -80.1918, name: "Miami Port", status: "High Alert" },
-//   { lat: 40.7128, lng: -74.0060, name: "New York Hub", status: "Active" },
-//   { lat: 34.0522, lng: -118.2437, name: "LA Warehouse", status: "Active" },
-// ];
-
-
+const checkTokenValidity = () => {
+  const expiresAt = localStorage.getItem('nexus_expires_at');
+  if (!expiresAt) return false;
+  
+  return Date.now() < parseInt(expiresAt);
+};
 
 function App() {
-  // 1. State for View Switching
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    const token = localStorage.getItem('nexus_token');
-    
-    if (!token) return false;
 
-    try {
-      const decoded = jwtDecode(token);
-      const currentTime = Date.now() / 1000; // Convert to seconds
+  const [isLoggedIn, setIsLoggedIn] = useState(checkTokenValidity);
 
-      if (decoded.exp < currentTime) {
-        console.warn("Token expired. Clearing storage.");
-        localStorage.removeItem('nexus_token');
-        return false;
-      }
-      return true;
-    } catch (error) {
-      return false;
-    }
-  });
-
-  const userRole = getRoleFromToken(localStorage.getItem('nexus_token'));
-
+  const userRole = (localStorage.getItem('nexus_user_role'));
+  const expiresAt = localStorage.getItem('nexus_expires_at');
   const [WAREHOUSE_POINTS, setWAREHOUSE_POINTS] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const handleLogin = (token) => {
-    localStorage.setItem('nexus_token', token);
-    // localStorage.setItem('nexus_user', JSON.stringify(userData));
+  const handleLogin = (role, expiresAt) => {
+    localStorage.setItem('nexus_user_role', role);
+    localStorage.setItem('nexus_expires_at', expiresAt);
     setIsLoggedIn(true);
-    setActiveTab('dashboard');
+    navigate('/');
   };
 
-  const handleLogout = () => {
-    // localStorage.removeItem('nexus_token');
-    localStorage.removeItem('nexus_token');
+  const handleLogout = async () => {
+    await fetch('http://localhost:3000/api/auth/logout', { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json' 
+        },
+        credentials: 'include' 
+    });
+    localStorage.removeItem('nexus_user_role');
+    localStorage.removeItem('nexus_expires_at');
     setIsLoggedIn(false);
-    setActiveTab('login');
+    navigate('/login');
   };
 
   useEffect(() => {
-    fetch("http://localhost:3000/api/logistics/coordinates")
+    if (isLoggedIn && !checkTokenValidity()) {
+      console.warn("Session expired. Forcing logout.");
+      handleLogout();
+    }
+  }, [location.pathname, isLoggedIn]);
+
+  useEffect(() => {
+    fetch("http://localhost:3000/api/logistics/coordinates", {
+      credentials: 'include'
+    })
       .then((res) => res.json())
       .then((json) => {
         setWAREHOUSE_POINTS(json.data);
@@ -86,13 +77,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Check if token exists on initial load
-    const token = localStorage.getItem('nexus_token');
-    if (token) {
-      setIsLoggedIn(true);
-    }
-    
-    // Simulate a brief delay for a smoother "Nexus" splash experience
     setTimeout(() => {
       setIsLoading(false);
     }, 800); 
@@ -102,87 +86,157 @@ function App() {
     return <NexusSplash />;
   }
 
+  // We removed the <Router> wrapper here!
   return (
-    <Router>
+    <>
       <Routes>
-        {/* Dynamic Reset Password Route - THIS FIXES THE "CANNOT GET" ERROR */}
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
-        {/* Catch-all route for your main Dashboard/Login logic */}
-        <Route path="*" element={
-          !isLoggedIn ? (
-            activeTab === 'signup' ? (
-              <Signup onLoginClick={() => setActiveTab('login')} />
-            ) : (
-              <Login onLogin={handleLogin} onSignupClick={() => setActiveTab('signup')} />
-            )
-          ) : (
-    <Dashboard setActiveTab={setActiveTab} activeTab={activeTab} onLogout={handleLogout}>
-      
-      {/* 2. Conditional Rendering Logic */}
-      {activeTab === 'dashboard' && (
-        <>
-          {/* Top Stats Cards */}
-          <header className="my-5 flex justify-between items-end">
-            <div>
-              <h1 className="text-2xl font-black text-white tracking-tight">Nexus</h1>
-              <p className="text-sm text-zinc-500 mt-1">Logistics Command Center</p>
-            </div>
-            <button 
-            onClick={()=>setIsOpen(true)}
-            className="bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
-              <Plus size={16} /> Place New Order
-            </button>
-          </header>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <StatCard icon={<Package />} label="Total Active Orders" value="1,847" trend="+12.3%" color="emerald" />
-            <StatCard icon={<AlertTriangle />} label="Critical Inventory Alerts" value="23" trend="+5 new" color="rose" />
-            <StatCard icon={<Truck />} label="Fleet Availability" value="78%" sub="142 Idle / 40 In-Transit" color="emerald" />
-            <StatCard icon={<Activity />} label="Operational Uptime" value="99.4%" trend="+0.2%" color="emerald" />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-[#0F1219] border border-zinc-800 rounded-xl overflow-hidden relative min-h-[400px]">
-              <div className="absolute top-4 left-4 z-[1000] bg-[#0F1219]/80 p-2 rounded border border-zinc-700">
-                <h3 className="text-white font-bold text-xs uppercase tracking-widest text-[10px]">Live Network</h3>
-              </div>
-              <RealMap points={WAREHOUSE_POINTS} />
-            </div>
-
-            <div className="bg-[#0F1219] border border-zinc-800 rounded-xl flex flex-col">
-              <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
-                <h3 className="text-white font-bold text-sm">Inventory Health</h3>
-                <span className="text-[10px] bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded border border-rose-500/20">7 Alerts</span>
-              </div>
-              <div className="p-4 space-y-3 flex-1">
-                <InventoryItem name="Steel Fasteners M12" loc="Dallas DC" stock={45} target={200} alert={false} />
-                <InventoryItem name="Hydraulic Fluid 5L" loc="Miami Port" stock={12} target={150} alert={true} />
-                <InventoryItem name="Circuit Boards Type-A" loc="New York Hub" stock={78} target={300} alert={false} />
-              </div>
-              <button className="m-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-lg transition-colors">
-                View All Alerts
-              </button>
-            </div>
-          </div>
-        </>
-      )
-      }
-      {activeTab === 'orders' && <Orders />}
-      {activeTab === 'logistics' && <Logistics />}
-      {activeTab === 'inventory' && <Inventory />}
-      {activeTab === 'fleet' && <Fleet />}
-      {activeTab === 'warehouse' && <WarehouseManagement />}
-      {activeTab === 'user' && userRole === 'system_admin' && <User />}
-    </Dashboard>
-    )
-    } />
+        {/* AUTHENTICATION GATE */}
+        {!isLoggedIn ? (
+          <>
+            <Route path="/login" element={<Login onLogin={handleLogin} />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </>
+        ) : (
+          /* PROTECTED ROUTES */
+          <Route path="*" element={
+            <Dashboard onLogout={handleLogout}>
+              {/* Nested Routes inside your Dashboard Layout */}
+              <Routes>
+                <Route path="/" element={<MainDashboardView setIsOpen={setIsOpen} WAREHOUSE_POINTS={WAREHOUSE_POINTS} />} />
+                <Route path="/orders" element={<Orders />} />
+                <Route path="/logistics" element={<Logistics />} />
+                <Route path="/inventory" element={<Inventory />} />
+                <Route path="/fleet" element={<Fleet />} />
+                <Route path="/warehouse" element={<WarehouseManagement />} />
+                <Route path="/zones" element={<Zones />} />
+                {userRole === 'system_admin' && <Route path="/user" element={<User />} />}
+                
+                {/* Fallback route - redirects unknown URLs back to dashboard */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Dashboard>
+          } />
+        )}
       </Routes>
-      <OrderModal isOpen={isOpen} onCloseAction={()=> setIsOpen(false)}/>
-    </Router>
+      <OrderModal isOpen={isOpen} onCloseAction={() => setIsOpen(false)} />
+    </>
   );
 }
 
-// Sub-components
+const MainDashboardView = ({ setIsOpen, WAREHOUSE_POINTS }) => {
+  // 1. Setup state to hold the live data from your SQL Database
+  const [stats, setStats] = useState({
+    totalActiveOrders: 0,
+    criticalInventoryAlerts: 0,
+    fleet: { availabilityPercentage: 0, idle: 0, inTransit: 0 },
+    operationalUptime: 100,
+    inventoryHealth: []
+  });
+
+  useEffect(() => {
+    fetch("http://localhost:3000/api/dashboard-stats", {
+      credentials: 'include'
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.status === "success") {
+          setStats(json.data);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch dashboard stats:", err));
+  }, []);
+
+  return (
+    <>
+      <header className="my-5 flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl font-black text-white tracking-tight">Nexus</h1>
+          <p className="text-sm text-zinc-500 mt-1">Logistics Command Center</p>
+        </div>
+        <button 
+          onClick={() => setIsOpen(true)}
+          className="bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors">
+          <Plus size={16} /> Place New Order
+        </button>
+      </header>
+      
+      {/* 3. Injecting Live Data into StatCards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <StatCard 
+          icon={<Package />} 
+          label="Total Active Orders" 
+          value={stats.totalActiveOrders.toLocaleString()} 
+          color="emerald" 
+        />
+        <StatCard 
+          icon={<AlertTriangle />} 
+          label="Critical Inventory Alerts" 
+          value={stats.criticalInventoryAlerts} 
+          color="rose" 
+        />
+        <StatCard 
+          icon={<Truck />} 
+          label="Fleet Availability" 
+          value={`${stats.fleet.availabilityPercentage}%`} 
+          sub={`${stats.fleet.idle} Idle / ${stats.fleet.inTransit} In-Transit`} 
+          color="emerald" 
+        />
+        <StatCard 
+          icon={<Activity />} 
+          label="Operational Uptime" 
+          value={`${stats.operationalUptime}%`} 
+          color="emerald" 
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-[#0F1219] border border-zinc-800 rounded-xl overflow-hidden relative min-h-[400px]">
+          <div className="absolute top-4 left-4 z-[1000] bg-[#0F1219]/80 p-2 rounded border border-zinc-700">
+            <h3 className="text-white font-bold text-xs uppercase tracking-widest text-[10px]">Live Network</h3>
+          </div>
+          <RealMap points={WAREHOUSE_POINTS} />
+        </div>
+
+        <div className="bg-[#0F1219] border border-zinc-800 rounded-xl flex flex-col">
+          <div className="p-4 border-b border-zinc-800 flex justify-between items-center">
+            <h3 className="text-white font-bold text-sm">Inventory Health</h3>
+            {stats.criticalInventoryAlerts > 0 && (
+              <span className="text-[10px] bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded border border-rose-500/20">
+                {stats.criticalInventoryAlerts} Alerts
+              </span>
+            )}
+          </div>
+          <div className="p-4 space-y-3 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent max-h-[300px]">
+            {/* 4. Map over the dynamic inventory health array from the backend */}
+            {stats.inventoryHealth.length > 0 ? (
+              stats.inventoryHealth.map((item, index) => (
+                <InventoryItem 
+                  key={index}
+                  name={item.name} 
+                  loc={`Warehouse Hub ${item.warehouse_id}`} 
+                  stock={item.current_stock} 
+                  target={item.reorder_level} 
+                  alert={item.current_stock <= item.reorder_level} 
+                />
+              ))
+            ) : (
+              <div className="text-zinc-500 text-xs text-center py-6">
+                All inventory levels are healthy.
+              </div>
+            )}
+          </div>
+          <button className="m-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-lg transition-colors">
+            View All Alerts
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
+
+// --- SUB-COMPONENTS ---
 const StatCard = ({ icon, label, value, trend, sub, color }) => (
   <div className="bg-[#0F1219] border border-zinc-800 p-5 rounded-xl">
     <div className="flex justify-between items-start mb-4">
@@ -213,13 +267,6 @@ const InventoryItem = ({ name, loc, stock, target, alert }) => (
       <span className={alert ? 'text-rose-400 font-bold' : 'text-zinc-400'}>Current: {stock} units</span>
       <span className="text-zinc-600 font-bold">Threshold: {target}</span>
     </div>
-  </div>
-);
-
-const MapPoint = ({ top, left, color }) => (
-  <div className="absolute w-4 h-4 rounded-full flex items-center justify-center" style={{ top, left }}>
-    <div className={`absolute inset-0 rounded-full animate-ping opacity-20 ${color === 'emerald' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
-    <div className={`w-2 h-2 rounded-full relative z-10 ${color === 'emerald' ? 'bg-emerald-500' : 'bg-rose-500'} shadow-[0_0_10px_rgba(16,185,129,0.5)]`}></div>
   </div>
 );
 
