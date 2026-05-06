@@ -252,18 +252,20 @@ const Fleet = () => {
           <h3 className="text-white font-bold text-sm">Fleet Overview</h3>
           <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">{fleetData.length} vehicles shown</span>
         </div>
-        <div className="divide-y divide-zinc-800/50">
-          {fleetData.map((vehicle) => (
-            <FleetRow 
-              key={vehicle.vehicle_id}
-              vehicleData={vehicle}
-              isOpen={openMenuId === vehicle.vehicle_id}
-              onToggle={toggleMenu}
-              onDelete={handleDelete}
-              onUpdate={() => handleUpdate(vehicle)}
-              
-            />
-          ))}
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
+          <div className="divide-y divide-zinc-800/50 min-w-[900px]">
+            {fleetData.map((vehicle) => (
+              <FleetRow 
+                key={vehicle.vehicle_id}
+                vehicleData={vehicle}
+                isOpen={openMenuId === vehicle.vehicle_id}
+                onToggle={toggleMenu}
+                onDelete={handleDelete}
+                onUpdate={() => handleUpdate(vehicle)}
+                
+              />
+            ))}
+          </div>
         </div>
         <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-white/[0.02]">
             <button 

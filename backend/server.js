@@ -15,6 +15,7 @@ import logistic from './components/logistic.js';
 import user from './components/user.js';
 import cookieParser from 'cookie-parser';
 import dashboardService from './components/dashboardService.js';
+import chat from './components/ai-bot/chat.js';
 
 dotenv.config();
 
@@ -44,6 +45,7 @@ app.use(order);
 app.use(logistic);
 app.use(user);
 app.use(dashboardService);
+app.use(chat);
 
 // app.get('/api/logistics/dispatch-queue', async (req, res) => {
 //     try {

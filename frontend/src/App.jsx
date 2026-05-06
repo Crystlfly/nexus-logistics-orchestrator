@@ -16,6 +16,7 @@ import ResetPasswordPage from './components/ResetPassword.jsx';
 import { jwtDecode } from 'jwt-decode';
 import OrderModal from './components/OrderModal.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import ChatWidget from './components/ai-bot/ChatWidget.jsx';
 
 import { useState, useEffect } from 'react';
 import { Package, AlertTriangle, Truck, Activity, Plus } from "lucide-react";
@@ -129,6 +130,7 @@ function App() {
         )}
       </Routes>
       <OrderModal isOpen={isOpen} onCloseAction={() => setIsOpen(false)} />
+      <ChatWidget />
     </>
   );
 }
