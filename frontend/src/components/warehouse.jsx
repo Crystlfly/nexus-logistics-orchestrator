@@ -222,23 +222,25 @@ const WarehouseManagement = () => {
 
       {/* Main Table */}
       <div className="bg-[#0F1219] border border-zinc-800 rounded-xl overflow-hidden shadow-xl mb-6">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-white/[0.02] border-b border-zinc-800 text-zinc-500">
-            <tr>
-              <th className="p-4 font-bold uppercase text-[10px] tracking-wider">Warehouse Info</th>
-              <th className="p-4 font-bold uppercase text-[10px] tracking-wider">Type</th>
-              <th className="p-4 font-bold uppercase text-[10px] tracking-wider">Staffing</th>
-              <th className="p-4 font-bold uppercase text-[10px] tracking-wider w-1/4">Capacity</th>
-              <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-right">Daily Cost</th>
-              <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-right">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-800/50">
-            {warehouseData.map((wh) => (
-              <WarehouseRow key={wh.id} data={wh} isOpen={openMenuId === wh.id} onToggle={() => toggleMenu(wh.id)} onDelete={() => handleDelete(wh.id)} onUpdate={handleUpdate} />
-            ))}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-white/[0.02] border-b border-zinc-800 text-zinc-500">
+              <tr>
+                <th className="p-4 font-bold uppercase text-[10px] tracking-wider">Warehouse Info</th>
+                <th className="p-4 font-bold uppercase text-[10px] tracking-wider">Type</th>
+                <th className="p-4 font-bold uppercase text-[10px] tracking-wider">Staffing</th>
+                <th className="p-4 font-bold uppercase text-[10px] tracking-wider w-1/4">Capacity</th>
+                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-right">Daily Cost</th>
+                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800/50">
+              {warehouseData.map((wh) => (
+                <WarehouseRow key={wh.id} data={wh} isOpen={openMenuId === wh.id} onToggle={() => toggleMenu(wh.id)} onDelete={() => handleDelete(wh.id)} onUpdate={handleUpdate} />
+              ))}
+            </tbody>
+          </table>
+        </div>
         {/* Pagination */}
         <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-white/[0.02]">
             <button onClick={() => currentPage > 1 && setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="flex items-center gap-1 text-xs font-bold text-zinc-400 hover:text-white disabled:opacity-30"><ChevronLeft size={14} /> Previous</button>

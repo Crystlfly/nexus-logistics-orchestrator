@@ -295,34 +295,36 @@ const Inventory = () => {
           <h3 className="text-white font-bold text-sm">Inventory Levels</h3>
           <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">9 items shown</span>
         </div>
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="text-[10px] uppercase font-black text-zinc-500 tracking-wider border-b border-zinc-800 bg-[#161a23]">
-              <th className="px-6 py-4">SKU</th>
-              <th className="px-6 py-4">Product Name</th>
-              <th className="px-6 py-4">Category</th>
-              <th className="px-6 py-4">Warehouse ID</th>
-              <th className="px-6 py-4">Zone ID</th>
-              <th className="px-6 py-4">Current / Optimal</th>
-              <th className="px-6 py-4">Stock Level</th>
-              <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4 text-right">Value</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-800/50">
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="text-[10px] uppercase font-black text-zinc-500 tracking-wider border-b border-zinc-800 bg-[#161a23]">
+                <th className="px-6 py-4">SKU</th>
+                <th className="px-6 py-4">Product Name</th>
+                <th className="px-6 py-4">Category</th>
+                <th className="px-6 py-4">Warehouse ID</th>
+                <th className="px-6 py-4">Zone ID</th>
+                <th className="px-6 py-4">Current / Optimal</th>
+                <th className="px-6 py-4">Stock Level</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Value</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800/50">
 
-            {inventoryData.map((item) => (
-              <InventoryRow 
-                key={item.product_id}
-                item={item}
-                isOpen={openMenuId === item.product_id}
-                onToggle={() => toggleMenu(item.product_id)}
-                onDelete={() => handleDelete(item.product_id)}
-                onUpdate={handleUpdate}
-              />
-            ))}
-          </tbody>
-        </table>
+              {inventoryData.map((item) => (
+                <InventoryRow 
+                  key={item.product_id}
+                  item={item}
+                  isOpen={openMenuId === item.product_id}
+                  onToggle={() => toggleMenu(item.product_id)}
+                  onDelete={() => handleDelete(item.product_id)}
+                  onUpdate={handleUpdate}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
         <div className="p-4 border-t border-zinc-800 flex justify-between items-center bg-white/[0.02]">
           <button 
             onClick={handlePrevPage}

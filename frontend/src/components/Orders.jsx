@@ -362,7 +362,7 @@ export default function OrderManagement() {
           <span className="text-[10px] text-zinc-500 font-bold uppercase">{rawOrdersData.length} Orders</span>
         </div>
         
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
           <table className="w-full text-left whitespace-nowrap">
             <thead className="bg-[#0B0E14] border-b border-zinc-800">
               <tr>
