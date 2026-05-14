@@ -1,6 +1,6 @@
-# Nexus: Integrated Logistics & Sales Management System
+# SiloKrate: Integrated Logistics & Sales Management System
 
-Nexus is a robust, full-stack platform designed to bridge the gap
+SiloKrate is a robust, full-stack platform designed to bridge the gap
 between sales operations and logistics coordination. It provides
 real-time tracking, inventory management, and streamlined order
 fulfillment to optimize supply chain efficiency.
@@ -44,7 +44,7 @@ staff.
 
 ## 🏗️ System Architecture
 
-Nexus follows a decoupled architecture to ensure scalability and ease of
+SiloKrate follows a decoupled architecture to ensure scalability and ease of
 maintenance.\
 The frontend communicates with backend APIs, which handle business
 logic, authentication, and database operations.
@@ -67,8 +67,8 @@ logic, authentication, and database operations.
 ### 1. Clone the repository
 
 ``` bash
-git clone https://github.com/Crystlfly/nexus-logistics-orchestrator.git
-cd nexus-logistics-orchestrator
+git clone https://github.com/Crystlfly/SiloKrate-logistics-orchestrator.git
+cd SiloKrate-logistics-orchestrator
 ```
 
 ### 2. Install dependencies
@@ -87,7 +87,7 @@ Create a `.env` file in the **server** directory and add your
 credentials:
 
     DB_SERVER=your-server-name.database.windows.net
-    DB_NAME=NexusDB
+    DB_NAME=SiloKrateDB
     DB_PASSWORD=your_secure_password
     DB_USER=your_username
     JWT_SECRET=your_secret_key
